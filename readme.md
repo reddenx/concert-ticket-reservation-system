@@ -70,4 +70,5 @@ endpoints were designed from the point of a view of an individual managing a ven
 Venues have sections that have seats, multiple sections can be configured for the same location as alternatives for event organizers to select during event creation. 
 
 ## Events
-events were design from the point of view of an event organizer.
+events were design from the point of view of an event organizer. allowing the scheduling of sales date, drafting/publishing visibility, closing sales temporarily with handling of people already in the shopping process, and selecting a configuration for the venue.
+
