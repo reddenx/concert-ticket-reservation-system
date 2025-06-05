@@ -1,3 +1,4 @@
+using ConcertoReservoApi.Infrastructure;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -13,7 +14,12 @@ namespace ConcertoReservoApi
             //- configuration
 
             var builder = WebApplication.CreateBuilder(args);
+
             builder.Services.AddControllers();
+            DependencyConfiguration.Register(builder);
+
+            builder.Services.AddAuthentication();
+
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 

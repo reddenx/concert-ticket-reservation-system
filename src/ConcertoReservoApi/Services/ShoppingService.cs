@@ -4,9 +4,6 @@ using System.Collections.Generic;
 
 namespace ConcertoReservoApi.Services
 {
-    
-
-
     public interface IShoppingService
     {
         record Result<T>;

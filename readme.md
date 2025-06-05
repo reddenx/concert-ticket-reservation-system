@@ -50,3 +50,24 @@
 
 *modifying a venue*  
 > would have to be versioned, and dated. would notify of conflicting configurations for existing events.
+
+
+# Api Design Notes
+I would liked to have diagramed this but ran out of time :/
+
+## General
+readonly objects have the View suffix, working (input/output) objects have the Dto suffix.  
+I went with puts over patches for personal convenience, object patching can get a little messy and I wanted to keep things clean and simple for this prototype.
+
+## Shopping
+the primary shopping object is a readonly view with writable locations for updating fields.  
+this was chosen over a more disassembled multi-endpoint solution to limit the amount of back and forth as these endpoints would likely be in high demand and ideally served with low latency. 
+payment integration is assumed to be a front-end vendor widget or redirect to vendor that provides us with an id/token to use for capture once the user has given them their information.  
+the general lifecycle is a user starts a shopping session for a given Event, proceeds to seat selection once they've cleared the queue (if present) starting the expiration timer, a user can then select seats up the the maximum allowed for the event, once selected, those seats/counts are reserved until their shopping session expires. the user then submits their data, resolving the validations present on their shopping session until they are ready for purchase. Hitting the purchase endpoint starts the checkout transaction during which all actions are locked. On a success they receive a receipt of their purchase with redemption information. on failure, if it's user resolvable, a validation issue is added that would need to be resolved before checkout is attempted again.
+
+## Venues
+endpoints were designed from the point of a view of an individual managing a venue, setting up section configurations available for events with a few helpful endpoints for management and planning. 
+Venues have sections that have seats, multiple sections can be configured for the same location as alternatives for event organizers to select during event creation. 
+
+## Events
+events were design from the point of view of an event organizer.
