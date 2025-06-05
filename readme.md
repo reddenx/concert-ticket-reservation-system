@@ -44,7 +44,9 @@
 *user working their way through the queue, selecting seats*
 > user lands on site, entered into the queue, during this time they could walk away or wait to receive an email or text (stretch), once notified and landed onto the selection page they are shown a 30m countdown for checkout, the user then selects seats from the seating selector, first by section, then by specific seat (if applicable), selecting seats synchronously moves their state to reserved for all other users. after filling in the rest of the necessary shopping information the user moves to checkout. if the user passes all validation their order turns to a purchase, the reserved tickets become sold, and the user is given ticketing information.
 
-Venue Management
-- setting up a venue
-- modifying a venue
+## Venue Management
+
+*setting up a venue*  
+
+*modifying a venue*  
 > would have to be versioned, and dated. would notify of conflicting configurations for existing events.
