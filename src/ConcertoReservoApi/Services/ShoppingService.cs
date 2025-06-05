@@ -11,8 +11,8 @@ namespace ConcertoReservoApi.Services
     {
         record Result<T>;
 
-        Result<ShoppingSessionDto> StartSession(params object[] inputs);
-        Result<ShoppingSessionDto> Update(ShoppingSessionDto session);
-        Result<ShoppingSessionDto> Get(Id<ShoppingSession> id);
+        //Result<ShoppingSessionDto> StartSession(params object[] inputs);
+        //Result<ShoppingSessionDto> Update(ShoppingSessionDto session);
+        //Result<ShoppingSessionDto> Get(Id<ShoppingSession> id);
     }
 }
