@@ -15,4 +15,20 @@ public class PublicEventView
 
     public DateTime TicketSaleStartDate { get; set; }
     public DateTime EventDate { get; set; }
+
+    public static PublicEventView FromData(EventData @event, DateTimeOffset now, VenueData venue)
+    {
+        return new PublicEventView
+        {
+            EventId = @event.Id,
+            Title = @event.Title,
+            Description = @event.Description,
+            VenueName = venue.Name,
+            VenueId = @event.VenueId,
+            CanShopForTickets = @event.OverrideTicketsShoppable ?? @event.TicketSalesStartDate > now,
+            CanPurchaseTickets = @event.OverrideTicketsPurchasable ?? @event.TicketSalesStartDate > now,
+            TicketSaleStartDate = @event.TicketSalesStartDate.UtcDateTime,
+            EventDate = @event.EventDate.UtcDateTime,
+        };
+    }
 }

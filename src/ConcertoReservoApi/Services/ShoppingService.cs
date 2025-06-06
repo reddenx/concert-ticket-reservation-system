@@ -94,15 +94,16 @@ namespace ConcertoReservoApi.Services
             _timeService = timeService;
         }
 
+        //would normally validate against duplicate creation with infrastructure inputs like the ip, browser, and other data
         public Result<ShoppingSessionView> StartShopping(string eventId)
         {
-            //would normally validate against duplicate creation with infrastructure inputs like the ip, browser, and other data
+            //check if event is real and sellable
             var eventInfo = _eventsRepository.GetEvent(eventId);
-#warning todo you left off here
-            if (eventInfo == null)//&& eventInfo.CanShopForTickets())
-            {
+            var now = _timeService.GetCurrentTime();
+            if (eventInfo == null)
                 return new Result<ShoppingSessionView>(null, ShoppingErrors.NotFound);
-            }
+            if (eventInfo.OverrideTicketsPurchasable ?? eventInfo.TicketSalesStartDate > now)
+                return new Result<ShoppingSessionView>(null, ShoppingErrors.NotFound);
 
             var session = _shoppingRepository.CreateShoppingSession(eventId);
             if (session == null)

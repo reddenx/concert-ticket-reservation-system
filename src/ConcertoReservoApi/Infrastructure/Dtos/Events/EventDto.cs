@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 
 namespace ConcertoReservoApi.Infrastructure.Dtos.Events;
 
@@ -18,9 +19,44 @@ public class EventDto
 
     public VenueConfigurationDto VenueConfiguration { get; set; }
 
-    public enum EventPublishStates { Draft, Published }
+    public enum EventPublishStates { Draft, Deleted, Published }
     public class VenueConfigurationDto
     {
+        public string VenueId { get; set; }
         public string[] SelectedSectionIds { get; set; }
     }
+
+    public static EventDto FromData(EventData eventData)
+    {
+        return new EventDto
+        {
+            Id = eventData.Id,
+            Title = eventData.Title,
+            Description = eventData.Description,
+            PublishState = Map(eventData.PublishState),
+            TicketSaleStartDate = eventData.TicketSalesStartDate.UtcDateTime,
+            EventDate = eventData.EventDate.UtcDateTime,
+            OverrideTicketsPurchasable = eventData.OverrideTicketsPurchasable,
+            OverrideTicketsShoppable = eventData.OverrideTicketsShoppable,
+            VenueConfiguration = new VenueConfigurationDto()
+            {
+                VenueId = eventData.VenueId,
+                SelectedSectionIds = eventData.SelectedEventSectionIds,
+            }
+        };
+    }
+    public static EventPublishStates Map(EventDataPublishStates publishState) => publishState switch
+    {
+        EventDataPublishStates.Draft => EventPublishStates.Draft,
+        EventDataPublishStates.Published => EventPublishStates.Published,
+        EventDataPublishStates.Deleted => EventPublishStates.Deleted,
+        _ => throw new ArgumentOutOfRangeException()
+    };
+    public static EventDataPublishStates Map(EventPublishStates state) => state switch
+    {
+        EventPublishStates.Draft => EventDataPublishStates.Draft,
+        EventPublishStates.Published => EventDataPublishStates.Published,
+        EventPublishStates.Deleted => EventDataPublishStates.Deleted,
+        _ => throw new ArgumentOutOfRangeException()
+    };
 }

@@ -18,5 +18,9 @@ namespace ConcertoReservoApi.Infrastructure
         void RemoveReservation(string eventId, string shoppingSessionId, string seatId);
         SeatPurchaseCode MarkSeatPurchased(string eventId, string seatId, string shoppingSessionId);
         SeatPurchaseCode GetSeatPurchaseCode(string eventId, string seatId, string shoppingSessionId);
+        bool HasEventHadAnySalesActivity(string eventId);
+        
+        void DeleteEventSeating(string eventId);
+        void CreateSeatingForEvent(string eventId, string venueId, string[] sectionIds);
     }
 }
