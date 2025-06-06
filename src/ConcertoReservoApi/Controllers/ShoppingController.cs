@@ -1,63 +1,16 @@
-﻿using ConcertoReservoApi.Services;
+﻿using ConcertoReservoApi.Infrastructure.Dtos;
+using ConcertoReservoApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Drawing;
+using static ConcertoReservoApi.Infrastructure.Dtos.ShoppingSessionView;
 
 namespace ConcertoReservoApi.Controllers;
 
 [Route("shopping")]
 public class ShoppingController : Controller
 {
-    public class AvailableEventSeatsView
-    {
-        public SectionView[] Sections { get; set; }
-
-        public class SectionView
-        {
-            public string Label { get; set; }
-            public SeatView[] Seats { get; set; }
-
-            //display info
-            public Point[] DisplayPolygon { get; set; }
-            public Point SeatOrigin { get; set; }
-
-            public class SeatView
-            {
-                public string Id { get; set; }
-                public string Label { get; set; }
-                public SeatStates State { get; set; }
-                public int? AvailableCount { get; set; } //if applicable for seat configuration
-                public PriceLineItemView[] Price { get; set; }
-                public SeatAddonView[] Addons { get; set; }
-
-                //display info
-                public Point Position;
-
-                public enum SeatStates { Available, Reserved, Purchased } //maybe hide reserved as purchased for shopping audiences
-
-                public class SeatAddonView
-                {
-                    public string Id { get; set; }
-                    public string Label { get; set; }
-                    public PriceLineItemView[] Price { get; set; }
-                }
-            }
-        }
-    }
-
-    
-
-    public enum ValidationIssues
-    {
-        Expired,
-        MissingShopperInfo,
-        InvalidShopperInfo,
-        MissingSeatSelection,
-        InvalidSeatSelection, //ideally "*invalid" would be broken out into exact fixable reasons to drive workflow
-        MissingPaymentInfo,
-    };
-
     private readonly IShoppingService _shoppingService;
 
     public ShoppingController(IShoppingService shoppingService)
@@ -166,15 +119,6 @@ public class ShoppingController : Controller
 
         return NoContent();
     }
-
-
-
-    //more of a development tool, probably not necessary with swagger working
-    [HttpGet("validations")]
-    [ProducesResponseType<ValidationIssues[]>(200)]
-    public IActionResult GetAllValidationIssues()
-        => throw new NotImplementedException();
-
 
     private IActionResult TranslateError(IShoppingService.ShoppingErrors value)
     {

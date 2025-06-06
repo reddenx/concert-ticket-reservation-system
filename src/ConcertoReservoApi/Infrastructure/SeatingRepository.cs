@@ -44,10 +44,13 @@ namespace ConcertoReservoApi.Infrastructure
 
     public interface ISeatingRepository
     {
+        record SeatPurchaseCode(string SeatId, string PurchaserReference, string ShoppingSessionId);
+
         EventSeat GetSeat(string eventId, string seatId);
         AvailableSeating GetEventSeating(string eventId);
         bool ReserveSeat(string eventId, string shoppingSessionId, EventSeat seat);
         void RemoveReservation(string eventId, string shoppingSessionId, EventSeat seat);
-        void MarkSeatPurchased(string eventId, string seatId, string shoppingSessionId);
+        SeatPurchaseCode MarkSeatPurchased(string eventId, string seatId, string shoppingSessionId);
+        SeatPurchaseCode GetSeatPurchaseCode(string eventId, string seatId, string shoppingSessionId);
     }
 }

@@ -2,7 +2,9 @@
 {
     public interface IPaymentService
     {
-        string CapturePayment(string id, string paymentToken, decimal totalPrice);
+        record PaymentCaptureResult(string CaptureConfirmationCode, decimal AmountCaptured, bool Success);
+
+        PaymentCaptureResult CapturePayment(string id, string paymentToken, decimal totalPrice);
         bool ValidatePaymentToken(string paymentTokenizationId);
     }
 }

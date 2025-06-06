@@ -1,11 +1,13 @@
 ﻿using ConcertoReservoApi.Core;
 using ConcertoReservoApi.Infrastructure;
+using ConcertoReservoApi.Infrastructure.Dtos;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static ConcertoReservoApi.Controllers.ShoppingController;
-using static ConcertoReservoApi.Core.EventSeat;
+using static ConcertoReservoApi.Infrastructure.Dtos.ShoppingSessionView;
+using static ConcertoReservoApi.Infrastructure.IPaymentService;
+using static ConcertoReservoApi.Infrastructure.ISeatingRepository;
 using static ConcertoReservoApi.Services.IShoppingService;
 
 namespace ConcertoReservoApi.Services
@@ -19,7 +21,8 @@ namespace ConcertoReservoApi.Services
             TechnicalError,
             SelectedSeatReserved,
             UnacceptablyBadInput,
-            CannotCheckoutWithValidationIssues
+            CannotCheckoutWithValidationIssues,
+            PaymentCaptureFailed
         }
         record Result<T>(T Data, ShoppingErrors? Error = null);
         record Result(ShoppingErrors? Error);
@@ -64,28 +67,31 @@ namespace ConcertoReservoApi.Services
         /// <returns></returns>
         Result<ShoppingSessionView> UpdatePaymentInformation(string id, string paymentTokenizationId);
         /// <summary>
-        /// attempts to campture payment and mark seats as sold
+        /// attempts to capture payment and mark seats as sold, builds receipt artifact, and returns seat references for redemption
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        Result AttemptPurchase(string id);
+        Result<ReceiptView> AttemptPurchase(string id, decimal expectedTotalPrice);
     }
 
     public class ShoppingService : IShoppingService
     {
+        private readonly IPaymentService _paymentService;
+        private readonly ILogger<ShoppingService> _logger;
+        private readonly ITimeService _timeService;
+
         private readonly IShoppingRepository _shoppingRepository;
         private readonly IEventsRepository _eventsRepository;
-        private readonly ILogger<ShoppingService> _logger;
         private readonly ISeatingRepository _seatingRepository;
-        private readonly IPaymentService _paymentService;
 
-        public ShoppingService(IShoppingRepository shoppingRepository, ILogger<ShoppingService> logger, IEventsRepository eventsRepository, ISeatingRepository seatingRepository, IPaymentService paymentService)
+        public ShoppingService(IShoppingRepository shoppingRepository, ILogger<ShoppingService> logger, IEventsRepository eventsRepository, ISeatingRepository seatingRepository, IPaymentService paymentService, ITimeService timeService)
         {
             _shoppingRepository = shoppingRepository;
             _logger = logger;
             _eventsRepository = eventsRepository;
             _seatingRepository = seatingRepository;
             _paymentService = paymentService;
+            _timeService = timeService;
         }
 
         public Result<ShoppingSessionView> StartShopping(string eventId)
@@ -103,8 +109,7 @@ namespace ConcertoReservoApi.Services
                 return new Result<ShoppingSessionView>(null, ShoppingErrors.TechnicalError);
             }
 
-            session.Validate();
-            return new Result<ShoppingSessionView>(session.ToDto());
+            return new Result<ShoppingSessionView>(FromCore(session));
         }
 
         public Result<ShoppingSessionView> GetSession(string id)
@@ -113,8 +118,7 @@ namespace ConcertoReservoApi.Services
             if (session == null)
                 return new Result<ShoppingSessionView>(null, ShoppingErrors.NotFound);
 
-            session.Validate();
-            return new Result<ShoppingSessionView>(session.ToDto());
+            return new Result<ShoppingSessionView>(FromCore(session));
         }
 
         public Result<AvailableEventSeatsView> GetAvailableSeating(string id)
@@ -176,8 +180,7 @@ namespace ConcertoReservoApi.Services
 
                 if (saved)
                 {
-                    session.Validate();
-                    return new Result<ShoppingSessionView>(session.ToDto());
+                    return new Result<ShoppingSessionView>(FromCore(session));
                 }
             }
 
@@ -203,8 +206,7 @@ namespace ConcertoReservoApi.Services
 
             _shoppingRepository.Save(session);
 
-            session.Validate();
-            return new Result<ShoppingSessionView>(session.ToDto());
+            return new Result<ShoppingSessionView>(FromCore(session));
         }
 
         public Result<ShoppingSessionView> UpdatePaymentInformation(string id, string paymentTokenizationId)
@@ -221,36 +223,60 @@ namespace ConcertoReservoApi.Services
 
             _shoppingRepository.Save(session);
 
-            session.Validate();
-            return new Result<ShoppingSessionView>(session.ToDto());
+            return new Result<ShoppingSessionView>(FromCore(session));
         }
 
-        public Result AttemptPurchase(string id)
+        public Result<ReceiptView> AttemptPurchase(string id, decimal expectedTotalPrice)
         {
-            //improvements to make, chunk into commands that have state, idempotency in each destructive command (payment)
+            //improvement: chunk into commands that have state, idempotency in each destructive command (payment, state transitions, etc.)
+            //improvement: if made asynchronous, separate auth/capture if supported by vendor
+            //improvement: have another immutable object for purchasing, like an order, for now using expected price input validation as a faster alternative during prototyping
 
             var session = _shoppingRepository.Get(id);
             if (session == null)
-                return new Result(ShoppingErrors.NotFound);
+                return new Result<ReceiptView>(null, ShoppingErrors.NotFound);
 
-            session.Validate();
+            //validate
             if (session.ValidationIssues.Any())
-                return new Result(ShoppingErrors.CannotCheckoutWithValidationIssues);
+                return new Result<ReceiptView>(null, ShoppingErrors.CannotCheckoutWithValidationIssues);
 
-            session.StartPurchase();
+            //change state to prevent reentry
+            //improvements: handling if this fails or is in bad state, 
+            session.PurchaseStarted();
             _shoppingRepository.Save(session);
 
-            var totalPrice = session.GetTotalPrice();
-            var confirmationCode = _paymentService.CapturePayment(session.Id, session.PaymentToken, totalPrice);
-            session.AttachPaymentConfirmation(confirmationCode);
-            _shoppingRepository.Save(session);
-
-            foreach (var seat in session.SelectedSeats)
+            //calculate total price, validate against what user confirmed, capture payment, save to session
+            //improvement:
+            //- duplicate payment detection in payment service
+            var receiptLineItems = session.BuildReceipt();
+            var totalPrice = receiptLineItems.Sum(r => r.amount);
+            var captureResult = _paymentService.CapturePayment(session.Id, session.PaymentReference, totalPrice);
+            if (captureResult.Success)
             {
-                _seatingRepository.MarkSeatPurchased(session.Id, session.EventId, seat.Id);
+                session.PaymentCaptureSucceeded(captureResult.CaptureConfirmationCode, captureResult.AmountCaptured, receiptLineItems, _timeService.GetCurrent());
+#error you left off here with time service, finish the reset of shopping service, then remove domain pattern from other services as compromise for remaining time
+                _shoppingRepository.Save(session);
+            }
+            else
+            {
+                session.PaymentCaptureFailed();
+                _shoppingRepository.Save(session);
+                return new Result<ReceiptView>(null, ShoppingErrors.PaymentCaptureFailed);
             }
 
-            return new Result(null);
+            //mark seats as purchased and get reference code
+            var seatReferenceCodes = new List<SeatPurchaseCode>();
+            foreach (var seat in session.SelectedSeats)
+            {
+                var referenceCode = _seatingRepository.MarkSeatPurchased(session.Id, session.EventId, seat.SeatId);
+            }
+
+            return new Result<ReceiptView>(ReceiptView.FromCore(session, seatReferenceCodes.ToArray()));
+        }
+
+        public Result<ReceiptView> GetReceipt(string id)
+        {
+            throw new NotImplementedException();
         }
     }
 }
