@@ -1,4 +1,5 @@
-﻿using ConcertoReservoApi.Services;
+﻿using ConcertoReservoApi.Infrastructure.Dtos.Venues;
+using ConcertoReservoApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -6,51 +7,13 @@ using System.Drawing;
 
 namespace ConcertoReservoApi.Controllers
 {
+
+    //I was able to spend the least amount of time on this endpoint and supporting services
+
     [Route("venues")]
     [Authorize("venues")]
     public class VenueController : Controller
     {
-        public class PublicVenueListView
-        {
-            public string Id { get; set; }
-            public string Name { get; set; }
-            public string Description { get; set; }
-        }
-
-        public class VenueDto
-        {
-            public string Id { get; set; }
-            public string Name { get; set; }
-            public string Description { get; set; }
-
-            //probably needs some sort of versioning system necessary for venue changes, like can't get rid of the ice rink if there's a hockey game on the calendar sort of thing
-        }
-
-        public class VenueSectionDto
-        {
-            public string Id { get; set; }
-            public string Label { get; set; }
-            public string Description { get; set; }
-            public VenueSeatDto[] Seats { get; set; }
-
-            //display
-            public Point[] DisplayPolygon { get; set; }
-            public Point SeatOrigin { get; set; }
-
-            //would probably want some mutual exclusivity with other sections, e.g. can't have a concert pit and floor seating at the same event. the user is assumed to be expert for this.
-        }
-
-        public class VenueSeatDto
-        {
-            public string Id { get; set; }
-            public string Label { get; set; }
-            public string Description { get; set; }
-            public int Capacity { get; set; } //for things like a floor/pit area, supports tables at comedy clubs, benches at certain venues, etc.
-
-            //display
-            public Point Position;
-        }
-
         private readonly IVenueService _venueService;
 
         //powers public facing venue selection UIs
@@ -63,7 +26,6 @@ namespace ConcertoReservoApi.Controllers
             return Json(venues);
         }
 
-        //
         [HttpGet("")]
         [ProducesResponseType<PublicVenueListView[]>(200)]
         public IActionResult GetAllVenues()
@@ -91,21 +53,34 @@ namespace ConcertoReservoApi.Controllers
             return Json(venue);
         }
 
-        [HttpPut("{id}")]
+        [HttpPut("")]
         [Produces<VenueDto>]
-        public IActionResult UpdateVenue([FromRoute] string id, [FromBody] VenueDto dto)
+        public IActionResult UpdateVenue([FromBody] VenueDto dto)
         {
             var user = this.GetUser();
-            var success = _venueService.UpdateVenue(user, id, dto);
+            var venue = _venueService.UpdateVenue(user, dto);
+            if (venue == null)
+                return BadRequest();
+
+            return Json(venue);
+        }
+
+        [HttpPut("/sections")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        public IActionResult ConfigureVenue([FromRoute] string id, [FromBody] VenueSectionDto[] dtos)
+        {
+            var user = this.GetUser();
+            var success = _venueService.UpdateVenueSections(user, id, dtos);
             if (!success)
                 return BadRequest();
 
-            return Json(_venueService.GetVenue(id));
+            return NoContent();
         }
 
         //(stretch) endpoint for a venue to get all upcoming events translated into a configuration schedule
-        [HttpGet("{id}/configurationSchedule")]
-        public IActionResult GetVenueConfigurationSchedule()
-            => throw new NotImplementedException();
+        //[HttpGet("{id}/configurationSchedule")]
+        //public IActionResult GetVenueConfigurationSchedule()
+        //    => throw new NotImplementedException();
     }
 }

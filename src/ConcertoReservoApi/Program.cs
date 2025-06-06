@@ -13,7 +13,6 @@ namespace ConcertoReservoApi
         public static void Main(string[] args)
         {
             //TODO
-            //- security
             //- hosting parameters
             //- configuration
 

@@ -75,7 +75,7 @@ namespace ConcertoReservoApi.Controllers
                 case IEventsService.EventServiceErrors.BadInput:
                     return BadRequest();
                 default:
-                    throw new NotImplementedException();
+                    throw new ArgumentOutOfRangeException();
             }
         }
     }

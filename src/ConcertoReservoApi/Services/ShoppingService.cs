@@ -279,7 +279,15 @@ namespace ConcertoReservoApi.Services
 
         public Result<ReceiptView> GetReceipt(string id)
         {
-            throw new NotImplementedException();
+            var session = _shoppingRepository.Get(id);
+            if (session == null)
+                return new Result<ReceiptView>(null, ShoppingErrors.NotFound);
+
+            if(session.State != ShoppingStates.PurchaseComplete)
+                return new Result<ReceiptView>(null, ShoppingErrors.NotFound);
+
+            var referenceCodes = _seatingRepository.GetReferenceCodesForPurchase(session.Id);
+            return new Result<ReceiptView>(ReceiptView.FromCore(session, referenceCodes));
         }
     }
 }

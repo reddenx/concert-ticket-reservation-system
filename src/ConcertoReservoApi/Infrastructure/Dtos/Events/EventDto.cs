@@ -23,7 +23,12 @@ public class EventDto
     public class VenueConfigurationDto
     {
         public string VenueId { get; set; }
-        public string[] SelectedSectionIds { get; set; }
+        public VenueSectionConfigurationDto[] SectionConfigurations { get; set; }
+    }
+    public class VenueSectionConfigurationDto
+    {
+        public string SectionId { get; set; }
+        public decimal SeatPrice { get; set; }
     }
 
     public static EventDto FromData(EventData eventData)
@@ -41,7 +46,11 @@ public class EventDto
             VenueConfiguration = new VenueConfigurationDto()
             {
                 VenueId = eventData.VenueId,
-                SelectedSectionIds = eventData.SelectedEventSectionIds,
+                SectionConfigurations = eventData.SectionConfigurations.Select(c => new VenueSectionConfigurationDto
+                {
+                    SeatPrice = c.BasePrice,
+                    SectionId = c.SectionId
+                }).ToArray(),
             }
         };
     }

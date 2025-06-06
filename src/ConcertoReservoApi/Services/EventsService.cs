@@ -105,17 +105,19 @@ namespace ConcertoReservoApi.Services
                 dto.OverrideTicketsShoppable,
                 dto.OverrideTicketsPurchasable,
                 dto.VenueConfiguration?.VenueId,
-                dto.VenueConfiguration?.SelectedSectionIds);
+                dto.VenueConfiguration?.SectionConfigurations.Select(c => new EventSectionData(
+                    c.SectionId,
+                    c.SeatPrice)).ToArray());
 
             _eventsRepository.UpdateEvent(updatedEvent);
 
             //regenerate seating info
             if (dto.PublishState == EventDto.EventPublishStates.Published
                 && dto.VenueConfiguration?.VenueId != null
-                && dto.VenueConfiguration?.SelectedSectionIds?.Any() == true)
+                && dto.VenueConfiguration?.SectionConfigurations?.Any() == true)
             {
                 _seatingRepository.DeleteEventSeating(eventData.Id);
-                _seatingRepository.CreateSeatingForEvent(eventData.Id, eventData.VenueId, eventData.SelectedEventSectionIds);
+                _seatingRepository.CreateSeatingForEvent(eventData.Id, eventData.VenueId, eventData.SectionConfigurations);
             }
 
             return new Result<EventDto>(EventDto.FromData(updatedEvent), null);

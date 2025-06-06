@@ -16,7 +16,8 @@ namespace ConcertoReservoApi.Infrastructure
         bool? OverrideTicketsShoppable,
         bool? OverrideTicketsPurchasable,
         string VenueId,
-        string[] SelectedEventSectionIds);
+        EventSectionData[] SectionConfigurations);
+    public record EventSectionData(string SectionId, decimal BasePrice);
 
     public interface IEventsRepository
     {
