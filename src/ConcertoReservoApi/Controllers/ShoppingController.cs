@@ -17,17 +17,17 @@ namespace ConcertoReservoApi.Controllers
 
             //state info
             public ShoppingSessionStates State { get; set; }
-            public DateTime? Expiration {  get; set; }
+            public DateTime? Expiration { get; set; }
 
             //product selection
             public SeatSelectionDto[] SelectedSeatIds { get; set; }
 
             //shopper info
-            public ShopperDto Shopper {  get; set; }
+            public ShopperDto Shopper { get; set; }
 
             //payment info
             public string PaymentToken { get; set; } //payment provider token
-            public PriceLineItemView[] Price {  get; set; }
+            public PriceLineItemView[] Price { get; set; }
 
             //validation
             public ValidationIssues[] CurrentValidationIssues { get; set; }
@@ -90,7 +90,7 @@ namespace ConcertoReservoApi.Controllers
 
                     public enum SeatStates { Available, Reserved, Purchased } //maybe hide reserved as purchased for shopping audiences
 
-                    public class SeatAddonView 
+                    public class SeatAddonView
                     {
                         public string Id { get; set; }
                         public string Label { get; set; }
@@ -130,7 +130,7 @@ namespace ConcertoReservoApi.Controllers
         public IActionResult StartShoppingSession([FromRoute] string eventId)
         {
             var newSession = _shoppingService.StartShopping(eventId);
-            if(newSession.Error.HasValue)
+            if (newSession.Error.HasValue)
                 return TranslateError(newSession.Error.Value);
 
             return Json(newSession.Data);
@@ -184,7 +184,7 @@ namespace ConcertoReservoApi.Controllers
         [ProducesResponseType<ShoppingSessionView>(200)]
         [ProducesResponseType(404)]
         [ProducesResponseType(409)] //seat unable to be reserved, it's been taken
-        public IActionResult SelectSeats([FromRoute] string id, SeatSelectionDto dto)
+        public IActionResult SelectSeats([FromRoute] string id, SeatSelectionDto[] dto)
         {
             var session = _shoppingService.SelectSeating(id, dto);
             if (session.Error.HasValue)
@@ -238,7 +238,12 @@ namespace ConcertoReservoApi.Controllers
         {
             switch (value)
             {
-                
+                case IShoppingService.ShoppingErrors.NotFound:
+                    return NotFound();
+                case IShoppingService.ShoppingErrors.DuplicateSessionCreated:
+                    return StatusCode(429);
+                default:
+                    throw new NotImplementedException();
             }
         }
     }
