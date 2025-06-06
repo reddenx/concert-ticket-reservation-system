@@ -9,14 +9,14 @@ namespace ConcertoReservoApi.Infrastructure
     {
         public static void Register(WebApplicationBuilder builder)
         {
-            builder.Services.AddSingleton<IShoppingService, ShoppingService>();
-            builder.Services.AddSingleton<IShoppingRepository, MockShoppingRepository>();
+            //builder.Services.AddSingleton<IShoppingService, ShoppingService>();
+            //builder.Services.AddSingleton<IShoppingRepository, MockShoppingRepository>();
 
-            builder.Services.AddSingleton<IEventsService, EventsService>();
-            builder.Services.AddSingleton<IEventsRepository, MockEventsRepository>();
+            //builder.Services.AddSingleton<IEventsService, EventsService>();
+            //builder.Services.AddSingleton<IEventsRepository, MockEventsRepository>();
 
-            builder.Services.AddSingleton<IVenueService, VenueService>();
-            builder.Services.AddSingleton<IVenueRepository, MockVenueService>();
+            //builder.Services.AddSingleton<IVenueService, VenueService>();
+            //builder.Services.AddSingleton<IVenueRepository, MockVenueService>();
         }
     }
 }

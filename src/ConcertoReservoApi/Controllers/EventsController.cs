@@ -1,4 +1,5 @@
-﻿using ConcertoReservoApi.Services;
+﻿using ConcertoReservoApi.Infrastructure.Dtos.Events;
+using ConcertoReservoApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -15,52 +16,12 @@ namespace ConcertoReservoApi.Controllers
     [Authorize("events")]
     public class EventsController : Controller
     {
-        public class PublicEventView
-        {
-            public string EventId { get; set; }
-            public string Title { get; set; }
-            public string Description { get; set; }
-            public string VenueName { get; set; }
-            public string VenueId { get; set; }
-
-            public bool CanShopForTickets { get; set; }
-            public bool CanPurchaseTickets { get; set; }
-
-            public DateTime TicketSaleStartDate { get; set; }
-            public DateTime EventDate { get; set; }
-        }
-
-        public class EventDto
-        {
-            public string Id { get; set; }
-            public string Title { get; set; }
-            public string Description { get; set; }
-            public EventPublishStates PublishState { get; set; }
-
-            public DateTime TicketSaleStartDate { get; set; }
-            public DateTime EventDate { get; set; }
-
-            //configured separately to allow the soft closing of ticket sales while people are in the shopping process
-            public bool? OverrideTicketsShoppable { get; set; } //allows users to start a shopping session/users to enter seating selection (pauses queue)
-            public bool? OverrideTicketsPurchasable { get; set; } //allows users to purchase seats
-
-            public VenueConfigurationDto VenueConfiguration { get; set; }
-
-            public enum EventPublishStates { Draft, Published }
-            public class VenueConfigurationDto
-            {
-                public string[] SelectedSectionIds { get; set; }
-            }
-        }
-
         private readonly IEventsService _eventsService;
 
         public EventsController(IEventsService eventsService)
         {
             _eventsService = eventsService;
         }
-
-        //public and listing info
 
         [AllowAnonymous]
         [HttpGet("public/upcoming")]
@@ -83,8 +44,6 @@ namespace ConcertoReservoApi.Controllers
             return Json(publicEvent);
         }
 
-        //
-
         [HttpPost("")]
         [Produces<EventDto>]
         public IActionResult CreateEvent([FromBody] EventDto dto)
@@ -106,7 +65,6 @@ namespace ConcertoReservoApi.Controllers
                 return TranslateError(updatedEvent.Error.Value);
             return Json(updatedEvent);
         }
-
 
         private IActionResult TranslateError(EventServiceErrors value)
         {

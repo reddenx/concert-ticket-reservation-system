@@ -1,11 +1,11 @@
 ﻿using ConcertoReservoApi.Core;
 using ConcertoReservoApi.Infrastructure;
-using ConcertoReservoApi.Infrastructure.Dtos;
+using ConcertoReservoApi.Infrastructure.Dtos.Shopping;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static ConcertoReservoApi.Infrastructure.Dtos.ShoppingSessionView;
+using static ConcertoReservoApi.Infrastructure.Dtos.Shopping.ShoppingSessionView;
 using static ConcertoReservoApi.Infrastructure.IPaymentService;
 using static ConcertoReservoApi.Infrastructure.ISeatingRepository;
 using static ConcertoReservoApi.Services.IShoppingService;
@@ -19,7 +19,7 @@ namespace ConcertoReservoApi.Services
             NotFound,
             DuplicateSessionCreated,
             TechnicalError,
-            SelectedSeatReserved,
+            SelectedSeatTaken,
             UnacceptablyBadInput,
             CannotCheckoutWithValidationIssues,
             PaymentCaptureFailed
@@ -98,7 +98,8 @@ namespace ConcertoReservoApi.Services
         {
             //would normally validate against duplicate creation with infrastructure inputs like the ip, browser, and other data
             var eventInfo = _eventsRepository.GetEvent(eventId);
-            if (eventInfo == null)
+#warning todo you left off here
+            if (eventInfo == null)//&& eventInfo.CanShopForTickets())
             {
                 return new Result<ShoppingSessionView>(null, ShoppingErrors.NotFound);
             }
@@ -123,29 +124,23 @@ namespace ConcertoReservoApi.Services
 
         public Result<AvailableEventSeatsView> GetAvailableSeating(string id)
         {
+            //improvement:
+            //- addition of seating service that takes the context of a shopping session to produce tailored offerings
+
             var session = _shoppingRepository.Get(id);
             if (session == null)
                 return new Result<AvailableEventSeatsView>(null, ShoppingErrors.NotFound);
 
             //ideally this would be a domain service of some sort that takes more into account from the shopper, like affiliation and what not, going with something simple like avaiable seating
-            var availableSeating = _seatingRepository.GetEventSeating(session.EventId);
-            if (availableSeating == null)
-            {
-                return new Result<AvailableEventSeatsView>(null, ShoppingErrors.NotFound);
-            }
+            var availableSeating = _seatingRepository.GetAvailableEventSeating(session.EventId);
 
-            new AvailableEventSeatsView
-            {
-                Sections = _eventsRepository
-            }
-
-            //build dto from seating obj
-            throw new NotImplementedException();
-            //return new Result<AvailableEventSeatsView>(dto);
+            var dto = AvailableEventSeatsView.FromCore(availableSeating);
+            return new Result<AvailableEventSeatsView>(dto);
         }
 
         /// <summary>
-        /// looks up selected seats, ensures they're all available, adds them to shopping session, reserves them, then saves session. if anything goes wrong it attempts to remove seats from session and clear any reserved seating.
+        /// looks up selected seats, ensures they're all available, adds them to shopping session, reserves them, then saves session.
+        /// if anything goes wrong it attempts to remove seats from session and clear any reserved seating.
         /// </summary>
         /// <param name="id"></param>
         /// <param name="selection"></param>
@@ -156,26 +151,34 @@ namespace ConcertoReservoApi.Services
             if (session == null)
                 return new Result<ShoppingSessionView>(null, ShoppingErrors.NotFound);
 
+            //gather all info
             session.ClearSelectedSeats();
             foreach (var selectedSeat in selection)
             {
-                var eventSeat = _seatingRepository.GetSeat(session.EventId, selectedSeat.SeatId);
-                if (eventSeat.Status != SeatReservationStatuses.Available)
-                    return new Result<ShoppingSessionView>(null, ShoppingErrors.SelectedSeatReserved);
+                var eventSeat = _seatingRepository.GetEventSeat(session.EventId, selectedSeat.SeatId);
+                if (eventSeat.Status != SeatStatuses.Available)
+                    return new Result<ShoppingSessionView>(null, ShoppingErrors.SelectedSeatTaken);
 
-                session.AddSelectedSeating(eventSeat, selectedSeat.AddonIds);
+                var selectedAddons = eventSeat.AvailableAddons.Where(a => selectedSeat.AddonIds.Contains(a.AddonId)).ToArray();
+                session.AddSelectedSeating(new SeatSelection(
+                    eventSeat.SeatId,
+                    eventSeat.Label,
+                    selectedAddons.Select(a => new SelectedSeatAddon(a.AddonId, a.Label, a.Price)).ToArray(),
+                    eventSeat.Price));
             }
 
+            //make reservations
             var anyReservationFailed = false;
             foreach (var seat in session.SelectedSeats)
             {
-                anyReservationFailed = anyReservationFailed || !_seatingRepository.ReserveSeat(session.EventId, session.Id, seat);
+                anyReservationFailed = anyReservationFailed || !_seatingRepository.ReserveSeat(session.EventId, session.Id, seat.SeatId);
             }
 
             //I don't like the early return pattern, but didn't want to duplicate unreservation block, could use a second pass here
             if (!anyReservationFailed)
             {
-                session.EnsureCountdownStarted();
+                var now = _timeService.GetCurrentTime();
+                session.EnsureCountdownStarted(now);
                 var saved = _shoppingRepository.Save(session); //if this fails we should also remove reservations
 
                 if (saved)
@@ -187,9 +190,9 @@ namespace ConcertoReservoApi.Services
             //this is somewhat unnecessary as the seat reservation should expire when the shopping session expires if it was left dangling, but it would ruin that seat for this and all other users as it's no longer attached to the session
             foreach (var seat in session.SelectedSeats)
             {
-                _seatingRepository.RemoveReservation(session.EventId, session.Id, seat);
+                _seatingRepository.RemoveReservation(session.EventId, session.Id, seat.SeatId);
             }
-            return new Result<ShoppingSessionView>(null, ShoppingErrors.SelectedSeatReserved);
+            return new Result<ShoppingSessionView>(null, ShoppingErrors.SelectedSeatTaken);
         }
 
         public Result<ShoppingSessionView> UpdateShopper(string id, ShopperDto shopper)
@@ -253,8 +256,7 @@ namespace ConcertoReservoApi.Services
             var captureResult = _paymentService.CapturePayment(session.Id, session.PaymentReference, totalPrice);
             if (captureResult.Success)
             {
-                session.PaymentCaptureSucceeded(captureResult.CaptureConfirmationCode, captureResult.AmountCaptured, receiptLineItems, _timeService.GetCurrent());
-#error you left off here with time service, finish the reset of shopping service, then remove domain pattern from other services as compromise for remaining time
+                session.PaymentCaptureSucceeded(captureResult.CaptureConfirmationCode, captureResult.AmountCaptured, receiptLineItems, captureResult.CaptureDate);
                 _shoppingRepository.Save(session);
             }
             else

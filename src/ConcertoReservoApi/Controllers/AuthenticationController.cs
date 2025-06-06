@@ -10,7 +10,7 @@ using static ConcertoReservoApi.Controllers.AuthenticatedUser;
 
 namespace ConcertoReservoApi.Controllers
 {
-    //this is not generally how I'd recommend doing auth for an api, I just thought it might be neat to be able to log in
+    //this is not generally how I'd recommend doing auth for an api, I just thought it might be neat to be able to log in for venue and event managers
     [Route("auth")]
     public class AuthenticationController : Controller
     {

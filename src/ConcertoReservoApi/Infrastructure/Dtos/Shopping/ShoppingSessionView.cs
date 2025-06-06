@@ -4,7 +4,7 @@ using System;
 using System.Linq;
 using static ConcertoReservoApi.Core.ShoppingSession;
 
-namespace ConcertoReservoApi.Infrastructure.Dtos;
+namespace ConcertoReservoApi.Infrastructure.Dtos.Shopping;
 
 
 //readonly base shopping aggregate
@@ -64,7 +64,7 @@ public class ShoppingSessionView
         return new ShoppingSessionView()
         {
             EventId = session.EventId,
-            Expiration = session.Expiration,
+            Expiration = session.Expiration.HasValue ? session.Expiration.Value.UtcDateTime : null,
             PaymentToken = session.PaymentReference,
             Shopper = new ShopperDto
             {

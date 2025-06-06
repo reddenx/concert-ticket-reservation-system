@@ -3,7 +3,7 @@ using System;
 using System.Linq;
 using static ConcertoReservoApi.Infrastructure.ISeatingRepository;
 
-namespace ConcertoReservoApi.Infrastructure.Dtos;
+namespace ConcertoReservoApi.Infrastructure.Dtos.Shopping;
 
 public class ReceiptView
 {

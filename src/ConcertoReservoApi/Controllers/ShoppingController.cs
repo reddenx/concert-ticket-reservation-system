@@ -1,10 +1,10 @@
-﻿using ConcertoReservoApi.Infrastructure.Dtos;
+﻿using ConcertoReservoApi.Infrastructure.Dtos.Shopping;
 using ConcertoReservoApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Drawing;
-using static ConcertoReservoApi.Infrastructure.Dtos.ShoppingSessionView;
+using static ConcertoReservoApi.Infrastructure.Dtos.Shopping.ShoppingSessionView;
 
 namespace ConcertoReservoApi.Controllers;
 
@@ -18,6 +18,9 @@ public class ShoppingController : Controller
         _shoppingService = shoppingService;
     }
 
+    /// <summary>
+    /// starts a shopping session for an event
+    /// </summary>
     [HttpPost("{eventId}")]
     [ProducesResponseType<ShoppingSessionView>(200)]
     [ProducesResponseType(429)] //duplication detection, probably more an infrastructure concern
@@ -31,7 +34,9 @@ public class ShoppingController : Controller
         return Json(newSession.Data);
     }
 
-    //get shopping session dto
+    /// <summary>
+    /// gets shopping session information
+    /// </summary>
     [HttpGet("{id}")]
     [ProducesResponseType<ShoppingSessionView>(200)]
     [ProducesResponseType(404)]
@@ -44,9 +49,9 @@ public class ShoppingController : Controller
         return Json(session.Data);
     }
 
-    //shopper
-
-    //update shopper info
+    /// <summary>
+    /// updates shopper details
+    /// </summary>
     [HttpPut("{id}/shopper")]
     [ProducesResponseType<ShoppingSessionView>(200)]
     [ProducesResponseType(400)] //should probably quantify these issues
@@ -61,7 +66,9 @@ public class ShoppingController : Controller
     }
 
 
-    //get seats for event, may want to live on events controller?, like an product catalog sort of thing, maybe stays in shopping as it has context of current shopper state like affiliations and discounts?
+    /// <summary>
+    /// gets the available seating and options for a shopping session
+    /// </summary>
     [HttpGet("{id}/seating")]
     [ProducesResponseType<AvailableEventSeatsView>(200)]
     [ProducesResponseType(404)]
@@ -74,7 +81,10 @@ public class ShoppingController : Controller
         return Json(session.Data);
     }
 
-    //add seats to session (with confirmation of reservation and set date)
+    /// <summary>
+    /// attaches selected available seats to a shopping session and marks them reserved.
+    /// this starts the session expiration timer if it hasn't already begun.
+    /// </summary>
     [HttpPut("{id}/seating")]
     [ProducesResponseType<ShoppingSessionView>(200)]
     [ProducesResponseType(404)]
@@ -88,11 +98,12 @@ public class ShoppingController : Controller
         return Json(session.Data);
     }
 
-
-
-    //this depends on vendor integration, I'm assuming there's a pure frontend tokenization of PCI data providing a token reference to be used as a back-end integration when capturing payment.
-    [HttpPut("{id}/payment")]
-    [ProducesResponseType(204)] //ideally this is an authoriative endpoint from a trusted back-channel integration, probaly wouldn't exist on this controller but leaving here for this exercise
+    /// <summary>
+    /// this depends on vendor integration, I'm assuming there's a pure frontend tokenization of PCI data providing a token reference to be used as a back-end integration when capturing payment.
+    /// ideally this is an authoriative endpoint from a trusted back-channel integration, probaly wouldn't exist on this controller but leaving here for this exercise
+    /// </summary>
+    [HttpPut("{id}/paymentintegration")]
+    [ProducesResponseType(204)]
     [ProducesResponseType(400)] //couldn't externally validate
     [ProducesResponseType(404)]
     public IActionResult VendorSpecificPaymentInput([FromRoute] string id, [FromBody] string paymentTokenizationId)
@@ -104,32 +115,35 @@ public class ShoppingController : Controller
         return NoContent();
     }
 
-
-    //checkout action
+    /// <summary>
+    /// attempts to purchase selected seats on a shopping session
+    /// the user confirmed price is generally a minimum for purchasing compliance and a good practice to confirm there isn't any front-end state desynchronization from the back-end
+    /// </summary>
     [HttpPost("{id}/checkout")]
     [ProducesResponseType<ShoppingSessionView>(200)] //populated with receipt on success
-    [ProducesResponseType(425)] //duplicate checkout
     [ProducesResponseType(400)] //has validations that need addressing OR a checkout error has occurred (which would be put onto validations as well)
     [ProducesResponseType(404)]
-    public IActionResult AttemptPurchase([FromRoute] string id)
+    public IActionResult AttemptPurchase([FromRoute] string id, [FromQuery] decimal? userConfirmedPrice) //query probably isn't best here I should probably add a tiny dto
     {
-        var result = _shoppingService.AttemptPurchase(id);
+        if (!userConfirmedPrice.HasValue)
+            return BadRequest();
+
+        var result = _shoppingService.AttemptPurchase(id, userConfirmedPrice.Value);
         if (result.Error.HasValue)
             return TranslateError(result.Error.Value);
 
         return NoContent();
     }
 
-    private IActionResult TranslateError(IShoppingService.ShoppingErrors value)
+    private IActionResult TranslateError(IShoppingService.ShoppingErrors value) => value switch
     {
-        switch (value)
-        {
-            case IShoppingService.ShoppingErrors.NotFound:
-                return NotFound();
-            case IShoppingService.ShoppingErrors.DuplicateSessionCreated:
-                return StatusCode(429);
-            default:
-                throw new NotImplementedException();
-        }
-    }
+        IShoppingService.ShoppingErrors.CannotCheckoutWithValidationIssues => StatusCode(400, "Shopping Session Has Validation Issues"),
+        IShoppingService.ShoppingErrors.DuplicateSessionCreated => StatusCode(429),
+        IShoppingService.ShoppingErrors.NotFound => StatusCode(404),
+        IShoppingService.ShoppingErrors.PaymentCaptureFailed => StatusCode(400, "Payment Capture Failed"),
+        IShoppingService.ShoppingErrors.SelectedSeatTaken => StatusCode(209),
+        IShoppingService.ShoppingErrors.TechnicalError => StatusCode(500),
+        IShoppingService.ShoppingErrors.UnacceptablyBadInput => StatusCode(400),
+        _ => StatusCode(500)
+    };
 }

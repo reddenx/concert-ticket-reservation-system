@@ -1,5 +1,7 @@
 ﻿using ConcertoReservoApi.Controllers;
-using static ConcertoReservoApi.Controllers.EventsController;
+using ConcertoReservoApi.Infrastructure.Dtos.Events;
+using System;
+using static ConcertoReservoApi.Services.IEventsService;
 
 namespace ConcertoReservoApi.Services
 {
@@ -20,24 +22,24 @@ namespace ConcertoReservoApi.Services
 
     public class EventsService : IEventsService
     {
-        public IEventsService.Result<EventDto> CreateEvent(AuthenticatedUser user, EventDto dto)
+        public Result<EventDto> CreateEvent(AuthenticatedUser user, EventDto dto)
         {
-            throw new System.NotImplementedException();
+            throw new NotImplementedException();
         }
 
         public PublicEventView GetPublicEvent(string id)
         {
-            throw new System.NotImplementedException();
+            throw new NotImplementedException();
         }
 
         public PublicEventView GetUpcomingPublicEvents()
         {
-            throw new System.NotImplementedException();
+            throw new NotImplementedException();
         }
 
-        public IEventsService.Result<EventDto> UpdateEvent(AuthenticatedUser user, EventDto dto)
+        public Result<EventDto> UpdateEvent(AuthenticatedUser user, EventDto dto)
         {
-            throw new System.NotImplementedException();
+            throw new NotImplementedException();
         }
     }
 }

@@ -1,6 +1,6 @@
 using System;
 
-namespace ConcertoReservoApi.Infrastructure.Dtos;
+namespace ConcertoReservoApi.Infrastructure.Dtos.Shopping;
 
 public class PriceLineItemView
 {

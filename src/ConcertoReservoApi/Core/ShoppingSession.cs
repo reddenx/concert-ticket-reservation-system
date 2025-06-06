@@ -8,8 +8,8 @@ using ConcertoReservoApi.Infrastructure;
 namespace ConcertoReservoApi.Core;
 
 //todo move
-public record SeatAddon(string addonId, string Label, decimal Price);
-public record SeatSelection(string SeatId, string Label, SeatAddon[] Addons, decimal Price);
+public record SelectedSeatAddon(string addonId, string Label, decimal Price);
+public record SeatSelection(string SeatId, string Label, SelectedSeatAddon[] Addons, decimal Price);
 public record Shopper(string FullName, string Email, string PhoneNumber, string[] AffiliateCodes);
 public enum ShoppingStates { Queued, SelectinSeats, CheckingOut, Expired, PurchaseComplete }
 public record Receipt(string PaymentConfirmationCode, ReceiptLineItem[] LineItems, decimal CaptureAmount, DateTime PurchaseDate);
@@ -29,7 +29,7 @@ public enum ShoppingSessionValidations
 //- separate factory that runs through all logic from data inputs
 public class ShoppingSession
 {
-    private const int EXPIRATION_MINUTES = 10;
+    private const double EXPIRATION_MINUTES = 10;
 
     public string Id { get; }
     public string EventId { get; }
@@ -37,7 +37,7 @@ public class ShoppingSession
     public ShoppingStates State { get; private set; }
     private bool _dirty = false;
 
-    public DateTime? Expiration { get; private set; }
+    public DateTimeOffset? Expiration { get; private set; }
 
     private List<SeatSelection> _selectedSeats = new List<SeatSelection>();
     public SeatSelection[] SelectedSeats => _selectedSeats.ToArray();
@@ -84,7 +84,7 @@ public class ShoppingSession
         _dirty = true;
     }
 
-    public void EnsureCountdownStarted(DateTime now)
+    public void EnsureCountdownStarted(DateTimeOffset now)
     {
         if (!Expiration.HasValue)
         {
