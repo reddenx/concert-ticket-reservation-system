@@ -2,142 +2,157 @@
 using System;
 using System.Collections.Generic;
 
-namespace ConcertoReservoApi.Core
+namespace ConcertoReservoApi.Core;
+/*
+ * fast prototyping some domain entities
+ */
+//public class Id<T>
+//{
+//    private readonly string _id;
+
+//    public static Id<T> Of(string id)
+//    {
+//        if (id == null) return null;
+
+//        return new Id<T>(id);
+//    }
+
+//    private Id(string id)
+//    {
+//        _id = id;
+//    }
+//}
+
+//definition of a venue
+public class Venue
 {
-    /*
-     * fast prototyping some domain entities
-     */
-    //public class Id<T>
-    //{
-    //    private readonly string _id;
+    public string Id { get; }
+    public string Name { get; }
 
-    //    public static Id<T> Of(string id)
-    //    {
-    //        if (id == null) return null;
-
-    //        return new Id<T>(id);
-    //    }
-
-    //    private Id(string id)
-    //    {
-    //        _id = id;
-    //    }
-    //}
-
-    //definition of a venue
-    public class Venue
-    {
-        Id<Venue> Id;
-        string Name;
-
-        public class Section
-        {
-            Id<Section> Id;
-            string Label;
-
-            public class Seat
-            {
-                Id<Seat> Id;
-                string Label;
-            }
-        }
-    }
-
-    //instance of a venue for an event
-    public class EventVenue
-    {
-        Id<Venue> VenueId;
-    }
-
-    //the event itself
-    public class Event
-    {
-        EventVenue Configuration;
-        DateTime EventDate;
-        string Title;
-        string Description;
-        DateTime? PublishDate;
-        DateTime? SalesOpeningDate;
-    }
-
-    public class EventSeat
-    {
-        public string Id;
-        public string Label;
-        public string HeldBySessionId;
-
-        public SeatReservationStatuses Status { get; internal set; }
-        public enum SeatReservationStatuses { Available, Reserved, Purchased }
-    }
-
-    //user account
-    public class User
-    {
-        string Firstname;
-        string Lastname;
-    }
-
-    //the timed user experience throught the shopping queue
-    public class ShoppingSession
+    public class Section
     {
         public string Id { get; }
-        public string EventId { get; }
-        public EventSeat[] SelectedSeats { get; }
-        public ValidationIssue ValidationIssues { get; set; }
-        public string PaymentToken { get; internal set; }
+        public string Label { get; }
 
-        internal void AddSelectedSeating(EventSeat eventSeat, string[] addonIds)
+        public class Seat
         {
-            throw new NotImplementedException();
+            public string Id { get; }
+            public string Label { get; }
         }
+    }
+}
 
-        internal void AttachPaymentConfirmation(object confirmationCode)
-        {
-            throw new NotImplementedException();
-        }
+//instance of a venue for an event
+public class EventVenue
+{
+    public string VenueId { get; }
+}
 
-        internal void AttachPaymentToken(string paymentTokenizationId)
-        {
-            throw new NotImplementedException();
-        }
+//the event itself
+// public class Event
+// {
+//     EventVenue Configuration;
+//     DateTime EventDate;
+//     string Title;
+//     string Description;
+//     DateTime? PublishDate;
+//     DateTime? SalesOpeningDate;
+// }
 
-        internal void ClearSelectedSeats()
-        {
-            throw new NotImplementedException();
-        }
+public class EventSeat
+{
+    public string Id;
+    public string Label;
+    public string HeldBySessionId;
 
-        internal void EnsureCountdownStarted()
-        {
-            throw new NotImplementedException();
-        }
+    public SeatReservationStatuses Status { get; internal set; }
+    public enum SeatReservationStatuses { Available, Reserved, Purchased }
+}
 
-        internal decimal GetTotalPrice()
-        {
-            throw new NotImplementedException();
-        }
+//user account
+public class User
+{
+    string Firstname;
+    string Lastname;
+}
 
-        internal void StartPurchase()
-        {
-            throw new NotImplementedException();
-        }
 
-        internal ShoppingController.ShoppingSessionView ToDto()
-        {
-            throw new NotImplementedException();
-        }
+//the timed user experience throught the shopping queue
+public class ShoppingSession
+{
+    private const int EXPIRATION_MINUTES = 10;
 
-        internal void UpdateShopper(string email, string fullName, string phoneNumber, string[] affilateCodes)
-        {
-            throw new NotImplementedException();
-        }
+    public string Id { get; }
 
-        internal void Validate()
+    public string EventId { get; }
+
+    public record SeatSelection(string seatId, string[] addonIds, decimal price);
+    private List<SeatSelection> _selectedSeats = new List<SeatSelection>();
+    public SeatSelection[] SelectedSeats => _selectedSeats.ToArray();
+
+    private List<Validations> _validationIssues = new List<Validations>();
+    public Validations[] ValidationIssues => _validationIssues.ToArray();
+    public enum Validations { }
+
+    public DateTime? Expiration { get; private set; }
+
+    public string PaymentToken { get; private set; }
+    public string PaymentConfirmation { get; private set; }
+
+    public void ClearSelectedSeats()
+    {
+        _selectedSeats.Clear();
+    }
+
+    public void AddSelectedSeating()
+    {
+        _selectedSeats.Add(new SeatSelection(seatId, addons, seatPrice));
+    }
+
+    public void AttachPaymentConfirmation(string confirmationCode)
+    {
+        PaymentConfirmation = confirmationCode;
+    }
+
+    public void AttachPaymentToken(string paymentToken)
+    {
+        PaymentToken = paymentToken;
+    }
+
+    internal void EnsureCountdownStarted(DateTime now)
+    {
+        if (!Expiration.HasValue)
         {
-            //has 
-            throw new NotImplementedException();
+            Expiration = now.AddMinutes(EXPIRATION_MINUTES);
         }
     }
 
-    //artifact of a purchase
-    public class Purchase { }
+    internal decimal GetTotalPrice()
+    {
+        throw new NotImplementedException();
+    }
+
+    internal void StartPurchase()
+    {
+        throw new NotImplementedException();
+    }
+
+    internal ShoppingController.ShoppingSessionView ToDto()
+    {
+        throw new NotImplementedException();
+    }
+
+    internal void UpdateShopper(string email, string fullName, string phoneNumber, string[] affilateCodes)
+    {
+        throw new NotImplementedException();
+    }
+
+    internal void Validate()
+    {
+        //has 
+        throw new NotImplementedException();
+    }
 }
+
+//artifact of a purchase
+public class Purchase { }

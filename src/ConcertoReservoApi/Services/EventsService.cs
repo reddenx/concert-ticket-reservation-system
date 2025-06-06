@@ -20,6 +20,24 @@ namespace ConcertoReservoApi.Services
 
     public class EventsService : IEventsService
     {
+        public IEventsService.Result<EventDto> CreateEvent(AuthenticatedUser user, EventDto dto)
+        {
+            throw new System.NotImplementedException();
+        }
 
+        public PublicEventView GetPublicEvent(string id)
+        {
+            throw new System.NotImplementedException();
+        }
+
+        public PublicEventView GetUpcomingPublicEvents()
+        {
+            throw new System.NotImplementedException();
+        }
+
+        public IEventsService.Result<EventDto> UpdateEvent(AuthenticatedUser user, EventDto dto)
+        {
+            throw new System.NotImplementedException();
+        }
     }
 }

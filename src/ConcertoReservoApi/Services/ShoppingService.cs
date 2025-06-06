@@ -3,6 +3,7 @@ using ConcertoReservoApi.Infrastructure;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using static ConcertoReservoApi.Controllers.ShoppingController;
 using static ConcertoReservoApi.Core.EventSeat;
 using static ConcertoReservoApi.Services.IShoppingService;
@@ -122,13 +123,16 @@ namespace ConcertoReservoApi.Services
             if (session == null)
                 return new Result<AvailableEventSeatsView>(null, ShoppingErrors.NotFound);
 
-            //todo lookup from some product catalog like service
-            //get available seating probably from a domain service or shopping repository
-            object availableSeating = null;
-
+            //ideally this would be a domain service of some sort that takes more into account from the shopper, like affiliation and what not, going with something simple like avaiable seating
+            var availableSeating = _seatingRepository.GetEventSeating(session.EventId);
             if (availableSeating == null)
             {
                 return new Result<AvailableEventSeatsView>(null, ShoppingErrors.NotFound);
+            }
+
+            new AvailableEventSeatsView
+            {
+                Sections = _eventsRepository
             }
 
             //build dto from seating obj
