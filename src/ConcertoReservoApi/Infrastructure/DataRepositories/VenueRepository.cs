@@ -19,5 +19,6 @@ namespace ConcertoReservoApi.Infrastructure.DataRepositories
 
         void DeleteAllSections(AuthenticatedUser user, string venueId);
         void AddSection(AuthenticatedUser user, string venueId, VenueSectionData section);
+        VenueSectionData[] GetSections(string venueId);
     }
 }

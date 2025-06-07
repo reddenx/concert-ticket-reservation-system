@@ -59,7 +59,7 @@ namespace ConcertoReservoApi.Controllers
         }
 
         [HttpPut("")]
-        [Produces<VenueDto>]
+        [ProducesResponseType<VenueDto>(200)]
         public IActionResult UpdateVenue([FromBody] VenueDto dto)
         {
             var user = this.GetUser();
@@ -70,7 +70,7 @@ namespace ConcertoReservoApi.Controllers
             return Json(venue);
         }
 
-        [HttpPut("/sections")]
+        [HttpPut("{id}/sections")]
         [ProducesResponseType(204)]
         [ProducesResponseType(400)]
         public IActionResult ConfigureVenue([FromRoute] string id, [FromBody] VenueSectionDto[] dtos)
@@ -81,6 +81,20 @@ namespace ConcertoReservoApi.Controllers
                 return BadRequest();
 
             return NoContent();
+        }
+
+        [HttpGet("{id}/sections")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType<VenueSectionDto[] >(200)]
+        public IActionResult GetVenueConfiguration([FromRoute] string id)
+        {
+            var user = this.GetUser();
+            var sections = _venueService.GetVenueSections(id);
+            if (sections == null)
+                return NotFound();
+
+            return Json(sections);
         }
 
         //(stretch) endpoint for a venue to get all upcoming events translated into a configuration schedule

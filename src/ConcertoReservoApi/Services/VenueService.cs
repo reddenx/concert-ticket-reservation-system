@@ -17,6 +17,7 @@ namespace ConcertoReservoApi.Services
         VenueDto CreateVenue(AuthenticatedUser user, VenueDto dto);
         VenueDto UpdateVenue(AuthenticatedUser user, VenueDto dto);
         bool UpdateVenueSections(AuthenticatedUser user, string venueId, VenueSectionDto[] dtos);
+        VenueSectionDto[] GetVenueSections(string venueId);
     }
     public class VenueService : IVenueService
     {
@@ -56,6 +57,14 @@ namespace ConcertoReservoApi.Services
         {
             var updatedVenue = _venueRepository.UpdateVenue(user, dto.Id, dto.Name, dto.Description);
             return VenueDto.FromData(updatedVenue);
+        }
+        public VenueSectionDto[] GetVenueSections(string venueId)
+        {
+            var sections = _venueRepository.GetSections(venueId);
+            if (sections == null)
+                return null;
+
+            return sections.Select(VenueSectionDto.FromData).ToArray();
         }
         public bool UpdateVenueSections(AuthenticatedUser user, string venueId, VenueSectionDto[] dtos)
         {

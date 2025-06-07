@@ -323,7 +323,7 @@ namespace ConcertoReservoApi.Infrastructure.DataRepositories
 
         public bool HasEventHadAnySalesActivity(string eventId)
         {
-            return _eventSections_eventId[eventId].SelectMany(s => s.Seats).Any(s => s.Status != SeatStatuses.Available);
+            return _eventSections_eventId.GetValueOrDefault(eventId, null)?.SelectMany(s => s.Seats).Any(s => s.Status != SeatStatuses.Available) ?? false;
         }
 
         public SeatPurchaseCodeData[] GetReferenceCodesForPurchase(string shoppingSessionId)
