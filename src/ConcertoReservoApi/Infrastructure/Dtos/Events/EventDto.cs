@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using ConcertoReservoApi.Infrastructure.DataRepositories;
 
 namespace ConcertoReservoApi.Infrastructure.Dtos.Events;
 

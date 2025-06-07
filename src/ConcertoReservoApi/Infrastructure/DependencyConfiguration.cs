@@ -1,4 +1,5 @@
-﻿using ConcertoReservoApi.Services;
+﻿using ConcertoReservoApi.Infrastructure.DataRepositories;
+using ConcertoReservoApi.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -9,14 +10,20 @@ namespace ConcertoReservoApi.Infrastructure
     {
         public static void Register(WebApplicationBuilder builder)
         {
-            //builder.Services.AddSingleton<IShoppingService, ShoppingService>();
-            //builder.Services.AddSingleton<IShoppingRepository, MockShoppingRepository>();
+            builder.Services.AddControllers();
 
-            //builder.Services.AddSingleton<IEventsService, EventsService>();
-            //builder.Services.AddSingleton<IEventsRepository, MockEventsRepository>();
+            builder.Services.AddSingleton<IShoppingService, ShoppingService>();
+            builder.Services.AddSingleton<IEventsService, EventsService>();
+            builder.Services.AddSingleton<IVenueService, VenueService>();
+            builder.Services.AddSingleton<ITimeService, LocalUtcTimeService>();
+            builder.Services.AddSingleton<IPaymentService, MOCK_PAYMENT_SERVICE>();
 
-            //builder.Services.AddSingleton<IVenueService, VenueService>();
-            //builder.Services.AddSingleton<IVenueRepository, MockVenueService>();
+            builder.Services.AddSingleton<MOCK_ONE_REPOSITORY>();
+            builder.Services.AddSingleton<IEventsRepository>(p => p.GetService<MOCK_ONE_REPOSITORY>());
+            builder.Services.AddSingleton<ISeatingRepository>(p => p.GetService<MOCK_ONE_REPOSITORY>());
+            builder.Services.AddSingleton<IShoppingRepository>(p => p.GetService<MOCK_ONE_REPOSITORY>());
+            builder.Services.AddSingleton<IVenueRepository>(p => p.GetService<MOCK_ONE_REPOSITORY>());
+
         }
     }
 }

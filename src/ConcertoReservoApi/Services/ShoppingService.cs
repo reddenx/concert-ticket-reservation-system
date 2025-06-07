@@ -1,13 +1,13 @@
 ﻿using ConcertoReservoApi.Core;
-using ConcertoReservoApi.Infrastructure;
+using ConcertoReservoApi.Infrastructure.DataRepositories;
 using ConcertoReservoApi.Infrastructure.Dtos.Shopping;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using static ConcertoReservoApi.Infrastructure.Dtos.Shopping.ShoppingSessionView;
-using static ConcertoReservoApi.Infrastructure.IPaymentService;
-using static ConcertoReservoApi.Infrastructure.ISeatingRepository;
+using static ConcertoReservoApi.Services.IPaymentService;
+using static ConcertoReservoApi.Infrastructure.DataRepositories.ISeatingRepository;
 using static ConcertoReservoApi.Services.IShoppingService;
 
 namespace ConcertoReservoApi.Services
@@ -257,7 +257,12 @@ namespace ConcertoReservoApi.Services
             var captureResult = _paymentService.CapturePayment(session.Id, session.PaymentReference, totalPrice);
             if (captureResult.Success)
             {
-                session.PaymentCaptureSucceeded(captureResult.CaptureConfirmationCode, captureResult.AmountCaptured, receiptLineItems, captureResult.CaptureDate);
+
+                session.PaymentCaptureSucceeded(
+                    captureResult.CaptureConfirmationCode,
+                    captureResult.AmountCaptured,
+                    receiptLineItems,
+                    captureResult.CaptureDate.UtcDateTime);
                 _shoppingRepository.Save(session);
             }
             else
@@ -268,7 +273,7 @@ namespace ConcertoReservoApi.Services
             }
 
             //mark seats as purchased and get reference code
-            var seatReferenceCodes = new List<SeatPurchaseCode>();
+            var seatReferenceCodes = new List<SeatPurchaseCodeData>();
             foreach (var seat in session.SelectedSeats)
             {
                 var referenceCode = _seatingRepository.MarkSeatPurchased(session.Id, session.EventId, seat.SeatId);
@@ -283,7 +288,7 @@ namespace ConcertoReservoApi.Services
             if (session == null)
                 return new Result<ReceiptView>(null, ShoppingErrors.NotFound);
 
-            if(session.State != ShoppingStates.PurchaseComplete)
+            if (session.State != ShoppingStates.PurchaseComplete)
                 return new Result<ReceiptView>(null, ShoppingErrors.NotFound);
 
             var referenceCodes = _seatingRepository.GetReferenceCodesForPurchase(session.Id);

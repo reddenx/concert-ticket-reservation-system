@@ -3,7 +3,7 @@ using ConcertoReservoApi.Core;
 using Microsoft.Extensions.Logging;
 using System;
 
-namespace ConcertoReservoApi.Infrastructure
+namespace ConcertoReservoApi.Infrastructure.DataRepositories
 {
     public enum EventDataPublishStates { Draft, Deleted, Published }
     public record EventData(
@@ -16,14 +16,14 @@ namespace ConcertoReservoApi.Infrastructure
         bool? OverrideTicketsShoppable,
         bool? OverrideTicketsPurchasable,
         string VenueId,
-        EventSectionData[] SectionConfigurations);
-    public record EventSectionData(string SectionId, decimal BasePrice);
+        EventSectionConfigurationData[] SectionConfigurations);
+    public record EventSectionConfigurationData(string SectionId, decimal BasePrice);
 
     public interface IEventsRepository
     {
         EventData[] SearchPublicEvents(DateTimeOffset searchStartDate, DateTimeOffset searchEndDate);
         EventData GetEvent(string eventId);
         EventData CreateEvent(AuthenticatedUser user, string title, string description, DateTimeOffset eventDate);
-        EventData UpdateEvent(params object[] inputs);
+        EventData UpdateEvent(AuthenticatedUser user, EventData data);
     }
 }

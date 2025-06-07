@@ -1,5 +1,5 @@
 ﻿using ConcertoReservoApi.Controllers;
-using ConcertoReservoApi.Infrastructure;
+using ConcertoReservoApi.Infrastructure.DataRepositories;
 using ConcertoReservoApi.Infrastructure.Dtos.Venues;
 using System;
 using System.Linq;
@@ -66,7 +66,24 @@ namespace ConcertoReservoApi.Services
             _venueRepository.DeleteAllSections(user, venueId);
             foreach (var section in dtos)
             {
-                _venueRepository.AddSection(user, venueId, section);
+                //this is a terribly interface, no time to refactor :/
+                _venueRepository.AddSection(
+                    user,
+                    venueId,
+                    new VenueSectionData(
+                        venueId,
+                        null,
+                        section.Label,
+                        section.Description,
+                        section.DisplayPolygon,
+                        section.DisplayPosition,
+                        section.Seats.Select(s => new VenueSeatingData(
+                            venueId,
+                            null,
+                            null,
+                            s.Label,
+                            s.Description,
+                            s.Position)).ToArray()));
             }
             return true;
         }

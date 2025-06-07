@@ -1,12 +1,13 @@
 ﻿using ConcertoReservoApi.Controllers;
 using ConcertoReservoApi.Infrastructure.Dtos.Venues;
 using System.Collections.Generic;
+using System.Drawing;
 
-namespace ConcertoReservoApi.Infrastructure
+namespace ConcertoReservoApi.Infrastructure.DataRepositories
 {
     public record VenueData(string Id, string Name, string Description);
-    public record VenueSectionData(string VenueId, string SectionId);
-    public record VenueSeatingData(string VenueId, string SectionId, string SeatId);
+    public record VenueSectionData(string VenueId, string SectionId, string Label, string Description, Point[] DisplayPolygon, Point DisplayPosition, VenueSeatingData[] Seats);
+    public record VenueSeatingData(string VenueId, string SectionId, string SeatId, string Label, string Description, Point DisplayPosition);
 
     public interface IVenueRepository
     {
@@ -17,7 +18,6 @@ namespace ConcertoReservoApi.Infrastructure
         VenueData UpdateVenue(AuthenticatedUser user, string venueId, string name, string description);
 
         void DeleteAllSections(AuthenticatedUser user, string venueId);
-        void AddSection(AuthenticatedUser user, string venueId, VenueSectionDto section);
+        void AddSection(AuthenticatedUser user, string venueId, VenueSectionData section);
     }
-    //public class MockVenueService : IVenueRepository { }
 }

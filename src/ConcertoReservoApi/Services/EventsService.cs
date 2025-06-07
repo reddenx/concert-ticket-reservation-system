@@ -1,5 +1,5 @@
 ﻿using ConcertoReservoApi.Controllers;
-using ConcertoReservoApi.Infrastructure;
+using ConcertoReservoApi.Infrastructure.DataRepositories;
 using ConcertoReservoApi.Infrastructure.Dtos.Events;
 using System;
 using System.Collections.Generic;
@@ -105,13 +105,13 @@ namespace ConcertoReservoApi.Services
                 dto.OverrideTicketsShoppable,
                 dto.OverrideTicketsPurchasable,
                 dto.VenueConfiguration?.VenueId,
-                dto.VenueConfiguration?.SectionConfigurations.Select(c => new EventSectionData(
+                dto.VenueConfiguration?.SectionConfigurations.Select(c => new EventSectionConfigurationData(
                     c.SectionId,
                     c.SeatPrice)).ToArray());
 
-            _eventsRepository.UpdateEvent(updatedEvent);
+            _eventsRepository.UpdateEvent(user, updatedEvent);
 
-            //regenerate seating info
+            //regenerate seating info, ideally would be domain event communication sort of thing
             if (dto.PublishState == EventDto.EventPublishStates.Published
                 && dto.VenueConfiguration?.VenueId != null
                 && dto.VenueConfiguration?.SectionConfigurations?.Any() == true)

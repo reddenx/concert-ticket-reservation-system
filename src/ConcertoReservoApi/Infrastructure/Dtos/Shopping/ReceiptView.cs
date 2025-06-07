@@ -1,7 +1,7 @@
 using ConcertoReservoApi.Core;
 using System;
 using System.Linq;
-using static ConcertoReservoApi.Infrastructure.ISeatingRepository;
+using static ConcertoReservoApi.Infrastructure.DataRepositories.ISeatingRepository;
 
 namespace ConcertoReservoApi.Infrastructure.Dtos.Shopping;
 
@@ -15,7 +15,7 @@ public class ReceiptView
 
     public string[] PrintablePurchasedSeatIds { get; set; }
 
-    public static ReceiptView FromCore(ShoppingSession session, SeatPurchaseCode[] seatPurchases)
+    public static ReceiptView FromCore(ShoppingSession session, SeatPurchaseCodeData[] seatPurchases)
     {
         if (session.State != ShoppingStates.PurchaseComplete)
             return null;

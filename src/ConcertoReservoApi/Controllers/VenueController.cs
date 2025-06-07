@@ -16,6 +16,11 @@ namespace ConcertoReservoApi.Controllers
     {
         private readonly IVenueService _venueService;
 
+        public VenueController(IVenueService venueService)
+        {
+            _venueService = venueService;
+        }
+
         //powers public facing venue selection UIs
         [AllowAnonymous]
         [HttpGet("public")]

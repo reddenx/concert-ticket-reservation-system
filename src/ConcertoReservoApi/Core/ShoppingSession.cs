@@ -7,13 +7,12 @@ using ConcertoReservoApi.Infrastructure;
 
 namespace ConcertoReservoApi.Core;
 
-//todo move
 public record SelectedSeatAddon(string addonId, string Label, decimal Price);
 public record SeatSelection(string SeatId, string Label, SelectedSeatAddon[] Addons, decimal Price);
 public record Shopper(string FullName, string Email, string PhoneNumber, string[] AffiliateCodes);
-public enum ShoppingStates { Queued, SelectinSeats, CheckingOut, Expired, PurchaseComplete }
 public record Receipt(string PaymentConfirmationCode, ReceiptLineItem[] LineItems, decimal CaptureAmount, DateTime PurchaseDate);
 public record ReceiptLineItem(string label, decimal amount);
+public enum ShoppingStates { Queued, SelectingSeats, CheckingOut, Expired, PurchaseComplete }
 public enum ShoppingSessionValidations
 {
     MissingShopperInfo,
@@ -27,13 +26,14 @@ public enum ShoppingSessionValidations
 //improvements:
 //- would have all mutation actions return results with handling in service layer
 //- separate factory that runs through all logic from data inputs
+//- in a more mature enterprise there'd be some eventing infrastructure set up to build up on updates and fire off on save, driving other domain reactions
 public class ShoppingSession
 {
     private const double EXPIRATION_MINUTES = 10;
 
     public string Id { get; }
     public string EventId { get; }
-    public int Version { get; }
+    public int Version { get; private set; }
     public ShoppingStates State { get; private set; }
     private bool _dirty = false;
 
@@ -50,6 +50,16 @@ public class ShoppingSession
     public string PaymentReference { get; private set; }
     //improvement: move to receipt object persisted separately
     public Receipt PurchaceReceipt { get; private set; }
+
+    public ShoppingSession(string id, string eventId)
+    {
+        Id = id;
+        EventId = eventId;
+        Version = 0;
+        State = ShoppingStates.SelectingSeats;
+        _dirty = false;
+        
+    }
 
     public void ClearSelectedSeats()
     {
@@ -75,7 +85,7 @@ public class ShoppingSession
 
     public void PaymentCaptureFailed()
     {
-        State = ShoppingStates.SelectinSeats;
+        State = ShoppingStates.SelectingSeats;
     }
 
     public void AttachPaymentToken(string paymentToken)
@@ -159,5 +169,11 @@ public class ShoppingSession
 
         return validationIssues.ToArray();
     }
-    
+
+    //should be handled at data layer, but for simplicity of demo and mocking purposes it's here publicly
+    public void RecordSaved()
+    {
+        Version += 1;
+        _dirty = false;
+    }
 }

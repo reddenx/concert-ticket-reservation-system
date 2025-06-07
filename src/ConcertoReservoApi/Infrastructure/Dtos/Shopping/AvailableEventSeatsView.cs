@@ -2,7 +2,7 @@
 using System.Drawing;
 using System.Linq;
 using static ConcertoReservoApi.Infrastructure.Dtos.Shopping.AvailableEventSeatsView.SectionView.SeatView;
-using static ConcertoReservoApi.Infrastructure.ISeatingRepository;
+using static ConcertoReservoApi.Infrastructure.DataRepositories.ISeatingRepository;
 
 namespace ConcertoReservoApi.Infrastructure.Dtos.Shopping;
 
@@ -41,7 +41,7 @@ public class AvailableEventSeatsView
         }
     }
 
-    public static AvailableEventSeatsView FromCore(EventSection[] sections)
+    public static AvailableEventSeatsView FromCore(EventSectionData[] sections)
     {
         return new AvailableEventSeatsView
         {
@@ -49,7 +49,7 @@ public class AvailableEventSeatsView
             {
                 Label = a.Label,
                 DisplayPolygon = a.DisplayPolygon,
-                Position = a.Position,
+                Position = a.DisplayPosition,
                 Seats = a.Seats.Select(s => new SectionView.SeatView
                 {
                     Id = s.SeatId,
@@ -62,7 +62,7 @@ public class AvailableEventSeatsView
                     }).ToArray(),
                     Price = [new PriceLineItemView { Label = null, Amount = s.Price }],
                     State = Map(s.Status),
-                    Position = s.Position,
+                    Position = s.DisplayPosition,
                 }).ToArray()
             }).ToArray(),
         };

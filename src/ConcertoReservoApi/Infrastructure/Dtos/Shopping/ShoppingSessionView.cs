@@ -89,7 +89,7 @@ public class ShoppingSessionView
     private static ShoppingSessionStates Map(ShoppingStates shoppingStates) => shoppingStates switch
     {
         ShoppingStates.Queued => ShoppingSessionStates.Queued,
-        ShoppingStates.SelectinSeats => ShoppingSessionStates.Selecting,
+        ShoppingStates.SelectingSeats => ShoppingSessionStates.Selecting,
         ShoppingStates.Expired => ShoppingSessionStates.Expired,
         ShoppingStates.CheckingOut => ShoppingSessionStates.Purchasing,
         ShoppingStates.PurchaseComplete => ShoppingSessionStates.Complete,

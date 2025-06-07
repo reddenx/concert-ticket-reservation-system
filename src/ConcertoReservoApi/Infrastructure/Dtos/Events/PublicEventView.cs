@@ -1,4 +1,5 @@
 ﻿using System;
+using ConcertoReservoApi.Infrastructure.DataRepositories;
 
 namespace ConcertoReservoApi.Infrastructure.Dtos.Events;
 
