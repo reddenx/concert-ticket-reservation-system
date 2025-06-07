@@ -22,7 +22,8 @@ namespace ConcertoReservoApi.Services
             SelectedSeatTaken,
             UnacceptablyBadInput,
             CannotCheckoutWithValidationIssues,
-            PaymentCaptureFailed
+            PaymentCaptureFailed,
+            ObservedPriceHasChanged
         }
         record Result<T>(T Data, ShoppingErrors? Error = null);
         record Result(ShoppingErrors? Error);
@@ -111,7 +112,7 @@ namespace ConcertoReservoApi.Services
                 return new Result<ShoppingSessionView>(null, ShoppingErrors.TechnicalError);
             }
 
-            return new Result<ShoppingSessionView>(FromCore(session));
+            return new Result<ShoppingSessionView>(FromCore(session, now));
         }
 
         public Result<ShoppingSessionView> GetSession(string id)
@@ -120,7 +121,8 @@ namespace ConcertoReservoApi.Services
             if (session == null)
                 return new Result<ShoppingSessionView>(null, ShoppingErrors.NotFound);
 
-            return new Result<ShoppingSessionView>(FromCore(session));
+            var now = _timeService.GetCurrentTime();
+            return new Result<ShoppingSessionView>(FromCore(session, now));
         }
 
         public Result<AvailableEventSeatsView> GetAvailableSeating(string id)
@@ -184,7 +186,7 @@ namespace ConcertoReservoApi.Services
 
                 if (saved)
                 {
-                    return new Result<ShoppingSessionView>(FromCore(session));
+                    return new Result<ShoppingSessionView>(FromCore(session, now));
                 }
             }
 
@@ -210,7 +212,8 @@ namespace ConcertoReservoApi.Services
 
             _shoppingRepository.Save(session);
 
-            return new Result<ShoppingSessionView>(FromCore(session));
+            var now = _timeService.GetCurrentTime();
+            return new Result<ShoppingSessionView>(FromCore(session, now));
         }
 
         public Result<ShoppingSessionView> UpdatePaymentInformation(string id, string paymentTokenizationId)
@@ -227,7 +230,8 @@ namespace ConcertoReservoApi.Services
 
             _shoppingRepository.Save(session);
 
-            return new Result<ShoppingSessionView>(FromCore(session));
+            var now = _timeService.GetCurrentTime();
+            return new Result<ShoppingSessionView>(FromCore(session, now));
         }
 
         public Result<ReceiptView> AttemptPurchase(string id, decimal expectedTotalPrice)
@@ -241,8 +245,15 @@ namespace ConcertoReservoApi.Services
                 return new Result<ReceiptView>(null, ShoppingErrors.NotFound);
 
             //validate
-            if (session.ValidationIssues.Any())
+            var now = _timeService.GetCurrentTime();
+            var validationIssues = session.GetValidationIssues(now);
+            if (validationIssues.Any())
                 return new Result<ReceiptView>(null, ShoppingErrors.CannotCheckoutWithValidationIssues);
+
+            var receiptLineItems = session.BuildReceipt();
+            var totalPrice = receiptLineItems.Sum(r => r.amount);
+            if (totalPrice != expectedTotalPrice)
+                return new Result<ReceiptView>(null, ShoppingErrors.ObservedPriceHasChanged);
 
             //change state to prevent reentry
             //improvements: handling if this fails or is in bad state, 
@@ -252,12 +263,10 @@ namespace ConcertoReservoApi.Services
             //calculate total price, validate against what user confirmed, capture payment, save to session
             //improvement:
             //- duplicate payment detection in payment service
-            var receiptLineItems = session.BuildReceipt();
-            var totalPrice = receiptLineItems.Sum(r => r.amount);
+            
             var captureResult = _paymentService.CapturePayment(session.Id, session.PaymentReference, totalPrice);
             if (captureResult.Success)
             {
-
                 session.PaymentCaptureSucceeded(
                     captureResult.CaptureConfirmationCode,
                     captureResult.AmountCaptured,
@@ -273,26 +282,14 @@ namespace ConcertoReservoApi.Services
             }
 
             //mark seats as purchased and get reference code
-            var seatReferenceCodes = new List<SeatPurchaseCodeData>();
             foreach (var seat in session.SelectedSeats)
             {
-                var referenceCode = _seatingRepository.MarkSeatPurchased(session.Id, session.EventId, seat.SeatId);
+                //this could be moved ahead of payment as this is internally reversable
+                var soldSeat = _seatingRepository.MarkSeatPurchased(session.EventId, seat.SeatId, session.Id);
+                session.AttachPurchasedSeating(soldSeat.SeatId, soldSeat.PurchaserReference);
             }
 
-            return new Result<ReceiptView>(ReceiptView.FromCore(session, seatReferenceCodes.ToArray()));
-        }
-
-        public Result<ReceiptView> GetReceipt(string id)
-        {
-            var session = _shoppingRepository.Get(id);
-            if (session == null)
-                return new Result<ReceiptView>(null, ShoppingErrors.NotFound);
-
-            if (session.State != ShoppingStates.PurchaseComplete)
-                return new Result<ReceiptView>(null, ShoppingErrors.NotFound);
-
-            var referenceCodes = _seatingRepository.GetReferenceCodesForPurchase(session.Id);
-            return new Result<ReceiptView>(ReceiptView.FromCore(session, referenceCodes));
+            return new Result<ReceiptView>(ReceiptView.FromCore(session));
         }
     }
 }

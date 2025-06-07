@@ -11,6 +11,7 @@ namespace ConcertoReservoApi.Infrastructure.Dtos.Shopping;
 public class ShoppingSessionView
 {
     //ids
+    public string ShoppingSessionId { get; set; }
     public string EventId { get; set; }
 
     //state info
@@ -59,19 +60,20 @@ public class ShoppingSessionView
     }
     public enum ShoppingSessionStates { Queued, Selecting, Expired, Purchasing, Complete }
 
-    public static ShoppingSessionView FromCore(ShoppingSession session)
+    public static ShoppingSessionView FromCore(ShoppingSession session, DateTimeOffset now)
     {
         return new ShoppingSessionView()
         {
+            ShoppingSessionId = session.Id,
             EventId = session.EventId,
             Expiration = session.Expiration.HasValue ? session.Expiration.Value.UtcDateTime : null,
             PaymentToken = session.PaymentReference,
             Shopper = new ShopperDto
             {
-                FullName = session.Shopper.FullName,
-                AffilateCodes = session.Shopper.AffiliateCodes,
-                Email = session.Shopper.Email,
-                PhoneNumber = session.Shopper.PhoneNumber,
+                FullName = session.Shopper?.FullName,
+                AffilateCodes = session.Shopper?.AffiliateCodes,
+                Email = session.Shopper?.Email,
+                PhoneNumber = session.Shopper?.PhoneNumber,
             },
             SelectedSeatIds = session.SelectedSeats.Select(s => new SeatSelectionDto
             {
@@ -84,6 +86,13 @@ public class ShoppingSessionView
                 Label = l.label
             }).ToArray(),
             State = Map(session.State),
+            CurrentValidationIssues = session.GetValidationIssues(now).Select(Map).ToArray(),
+            Receipt = session.PurchaseReceipt == null ? null : 
+            new ReceiptView
+            {
+                AmountCaptured = session.PurchaseReceipt.CaptureAmount,
+                PrintablePurchasedSeatCodes = session.PurchasedSeats.Select(s => s.PurchasedSeatReferenceCode).ToArray(),
+            }
         };
     }
     private static ShoppingSessionStates Map(ShoppingStates shoppingStates) => shoppingStates switch
@@ -97,6 +106,13 @@ public class ShoppingSessionView
     };
     private static ValidationIssuesDto Map(ShoppingSessionValidations validation) => validation switch
     {
+        ShoppingSessionValidations.AlreadyPurchased => ValidationIssuesDto.AlreadyPurchased,
+        ShoppingSessionValidations.CurrentlyAttemptingPurchase => ValidationIssuesDto.CurrentlyAttemptingPurchase,
+        ShoppingSessionValidations.InQueue => ValidationIssuesDto.InQueue,
+        ShoppingSessionValidations.MissingSeatSelection => ValidationIssuesDto.MissingSeatSelection,
+        ShoppingSessionValidations.MissingShopperInfo => ValidationIssuesDto.MissingShopperInfo,
+        ShoppingSessionValidations.SessionExpired => ValidationIssuesDto.Expired,
+        ShoppingSessionValidations.MissingPaymentInfo => ValidationIssuesDto.MissingPaymentInfo,
         _ => throw new ArgumentOutOfRangeException($"{validation} not in {typeof(ValidationIssuesDto)}")
     };
 }

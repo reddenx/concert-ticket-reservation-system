@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Threading.Tasks;
 using System;
 using System.Linq;
+using System.Text.Json.Serialization;
 
 namespace ConcertoReservoApi
 {
@@ -18,7 +19,10 @@ namespace ConcertoReservoApi
 
             var builder = WebApplication.CreateBuilder(args);
 
-            builder.Services.AddControllers();
+            builder.Services.AddControllers().AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+            });
             DependencyConfiguration.Register(builder);
 
             //normally wouldn't put this here, but moving fast for now

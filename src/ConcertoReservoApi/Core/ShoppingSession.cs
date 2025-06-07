@@ -11,6 +11,7 @@ public record SelectedSeatAddon(string addonId, string Label, decimal Price);
 public record SeatSelection(string SeatId, string Label, SelectedSeatAddon[] Addons, decimal Price);
 public record Shopper(string FullName, string Email, string PhoneNumber, string[] AffiliateCodes);
 public record Receipt(string PaymentConfirmationCode, ReceiptLineItem[] LineItems, decimal CaptureAmount, DateTime PurchaseDate);
+public record PurchasedSeat(string SeatId, string PurchasedSeatReferenceCode);
 public record ReceiptLineItem(string label, decimal amount);
 public enum ShoppingStates { Queued, SelectingSeats, CheckingOut, Expired, PurchaseComplete }
 public enum ShoppingSessionValidations
@@ -20,7 +21,8 @@ public enum ShoppingSessionValidations
     AlreadyPurchased,
     CurrentlyAttemptingPurchase,
     InQueue,
-    SessionExpired
+    SessionExpired,
+    MissingPaymentInfo
 }
 
 //improvements:
@@ -42,14 +44,13 @@ public class ShoppingSession
     private List<SeatSelection> _selectedSeats = new List<SeatSelection>();
     public SeatSelection[] SelectedSeats => _selectedSeats.ToArray();
 
-    private List<ShoppingSessionValidations> _validationIssues = new List<ShoppingSessionValidations>();
-    public ShoppingSessionValidations[] ValidationIssues => _validationIssues.ToArray();
-
     public Shopper Shopper { get; private set; }
 
     public string PaymentReference { get; private set; }
     //improvement: move to receipt object persisted separately
-    public Receipt PurchaceReceipt { get; private set; }
+    public Receipt PurchaseReceipt { get; private set; }
+    private List<PurchasedSeat> _seatPuchase = new List<PurchasedSeat>();
+    public PurchasedSeat[] PurchasedSeats => _seatPuchase.ToArray();
 
     public ShoppingSession(string id, string eventId)
     {
@@ -58,7 +59,7 @@ public class ShoppingSession
         Version = 0;
         State = ShoppingStates.SelectingSeats;
         _dirty = false;
-        
+
     }
 
     public void ClearSelectedSeats()
@@ -78,9 +79,13 @@ public class ShoppingSession
 
     public void PaymentCaptureSucceeded(string confirmationCode, decimal amountCaptured, ReceiptLineItem[] receipt, DateTime purchaseDate)
     {
-        this.PurchaceReceipt = new Receipt(confirmationCode, receipt, amountCaptured, purchaseDate);
+        this.PurchaseReceipt = new Receipt(confirmationCode, receipt, amountCaptured, purchaseDate);
         State = ShoppingStates.PurchaseComplete;
         _dirty = true;
+    }
+    public void AttachPurchasedSeating(string seatId, string purchasedSeatReferenceCode)
+    {
+        _seatPuchase.Add(new PurchasedSeat(seatId, purchasedSeatReferenceCode));
     }
 
     public void PaymentCaptureFailed()
@@ -134,8 +139,7 @@ public class ShoppingSession
         _dirty = true;
     }
 
-
-    public ShoppingSessionValidations[] GetValidationIssues(DateTime now)
+    public ShoppingSessionValidations[] GetValidationIssues(DateTimeOffset now)
     {
         //improvements:
         //- rules engine pattern (command or class pattern with descriptively named checkers like "CannotMakePurchaseIfInQueue")
@@ -152,6 +156,8 @@ public class ShoppingSession
             validationIssues.Add(ShoppingSessionValidations.MissingShopperInfo);
         if (!SelectedSeats.Any())
             validationIssues.Add(ShoppingSessionValidations.MissingSeatSelection);
+        if (this.PaymentReference == null)
+            validationIssues.Add(ShoppingSessionValidations.MissingPaymentInfo);
 
         //state validation
         //- cannot checkout case already checking out

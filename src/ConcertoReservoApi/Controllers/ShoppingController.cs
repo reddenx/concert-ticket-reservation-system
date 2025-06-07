@@ -89,7 +89,7 @@ public class ShoppingController : Controller
     [ProducesResponseType<ShoppingSessionView>(200)]
     [ProducesResponseType(404)]
     [ProducesResponseType(409)] //seat unable to be reserved, it's been taken
-    public IActionResult SelectSeats([FromRoute] string id, SeatSelectionDto[] dto)
+    public IActionResult SelectSeats([FromRoute] string id, [FromBody] SeatSelectionDto[] dto)
     {
         var session = _shoppingService.SelectSeating(id, dto);
         if (session.Error.HasValue)
@@ -144,6 +144,7 @@ public class ShoppingController : Controller
         IShoppingService.ShoppingErrors.SelectedSeatTaken => StatusCode(209),
         IShoppingService.ShoppingErrors.TechnicalError => StatusCode(500),
         IShoppingService.ShoppingErrors.UnacceptablyBadInput => StatusCode(400),
+        IShoppingService.ShoppingErrors.ObservedPriceHasChanged => StatusCode(400),
         _ => StatusCode(500)
     };
 }

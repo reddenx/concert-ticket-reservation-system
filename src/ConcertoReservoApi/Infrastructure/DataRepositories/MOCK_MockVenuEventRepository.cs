@@ -3,6 +3,7 @@ using ConcertoReservoApi.Core;
 using ConcertoReservoApi.Infrastructure.Dtos.Venues;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using static ConcertoReservoApi.Infrastructure.DataRepositories.ISeatingRepository;
 
@@ -22,9 +23,59 @@ namespace ConcertoReservoApi.Infrastructure.DataRepositories
         private readonly Dictionary<string, SeatPurchaseCodeData> _seatPurchases_seatId = new Dictionary<string, SeatPurchaseCodeData>();
         private readonly Dictionary<string, ShoppingSession> _shoppingSessions_sessionId = new Dictionary<string, ShoppingSession>();
 
+        public MOCK_ONE_REPOSITORY()
+        {
+            CreateSomeInitialMockData();
+        }
+
         private string GenerateId()
         {
             return Guid.NewGuid().ToString("N").ToLower(); ;
+        }
+
+        private void CreateSomeInitialMockData()
+        {
+            var user = new AuthenticatedUser("mock-initialization@daystone.club", null);
+            var roseGardenVenue = this.Create(user, "Rose Garden", "Home to the Trail Blazers, and I'm sure other sports things");
+
+            this.AddSection(user, roseGardenVenue.Id, new VenueSectionData(roseGardenVenue.Id, null, "Floor", "Standing Floor Section", [], Point.Empty, new[]
+            {
+                new VenueSeatingData(roseGardenVenue.Id, null, null, "Floor Seat 1", "", Point.Empty),
+                new VenueSeatingData(roseGardenVenue.Id, null, null, "Floor Seat 2", "", Point.Empty),
+                new VenueSeatingData(roseGardenVenue.Id, null, null, "Floor Seat 3", "", Point.Empty),
+            }));
+
+            this.AddSection(user, roseGardenVenue.Id, new VenueSectionData(roseGardenVenue.Id, null, "Section 1", "First Row Seating", [], Point.Empty, new[]
+            {
+                new VenueSeatingData(roseGardenVenue.Id, null, null, "1-a", "", Point.Empty),
+                new VenueSeatingData(roseGardenVenue.Id, null, null, "1-b", "", Point.Empty),
+                new VenueSeatingData(roseGardenVenue.Id, null, null, "1-c", "", Point.Empty),
+                new VenueSeatingData(roseGardenVenue.Id, null, null, "2-a", "", Point.Empty),
+                new VenueSeatingData(roseGardenVenue.Id, null, null, "2-b", "", Point.Empty),
+                new VenueSeatingData(roseGardenVenue.Id, null, null, "2-c", "", Point.Empty),
+            }));
+
+            var allSections = GetSections(roseGardenVenue.Id);
+            var floor = allSections.First(s => s.Label == "Floor");
+            var section1 = allSections.First(s => s.Label == "Section 1");
+
+            var myBadMusicEvent = CreateEvent(user, "Sean's awful garage band", "it's like jazz, if jazz was comedy, because this is a joke, like the music that'll be played", DateTimeOffset.UtcNow.AddDays(6));
+            myBadMusicEvent = UpdateEvent(user, new EventData(
+                myBadMusicEvent.Id,
+                myBadMusicEvent.Title,
+                myBadMusicEvent.Description,
+                EventDataPublishStates.Published,
+                myBadMusicEvent.EventDate,
+                DateTimeOffset.UtcNow.AddDays(-1),
+                null,
+                null,
+                roseGardenVenue.Id,
+                [
+                    new EventSectionConfigurationData(floor.SectionId, 25.00m),
+                    new EventSectionConfigurationData(section1.SectionId, 55.00m),
+                ]));
+
+            CreateSeatingForEvent(myBadMusicEvent.Id, myBadMusicEvent.VenueId, myBadMusicEvent.SectionConfigurations);
         }
 
         #region events
@@ -104,7 +155,28 @@ namespace ConcertoReservoApi.Infrastructure.DataRepositories
 
         public void AddSection(AuthenticatedUser user, string venueId, VenueSectionData section)
         {
-            _venueSections_venueId[venueId]?.Add(section);
+            var sectionId = GenerateId();
+            _venueSections_venueId[venueId]?.Add(new VenueSectionData(
+                section.VenueId,
+                sectionId,
+                section.Label,
+                section.Description,
+                section.DisplayPolygon,
+                section.DisplayPosition,
+                section.Seats.Select(s => new VenueSeatingData(
+                    s.VenueId,
+                    sectionId,
+                    GenerateId(),
+                    s.Label,
+                    s.Description,
+                    s.DisplayPosition
+                    )).ToArray()
+                ));
+        }
+
+        public VenueSectionData[] GetSections(string venueId)
+        {
+            return _venueSections_venueId[venueId]?.ToArray();
         }
 
         #endregion venues
@@ -116,9 +188,7 @@ namespace ConcertoReservoApi.Infrastructure.DataRepositories
             if (!_eventSections_eventId.ContainsKey(eventId))
                 return null;
 
-            foreach (var section in _eventSections_eventId[eventId])
-                return section.Seats.FirstOrDefault(s => s.SeatId == seatId);
-            return null;
+            return _eventSections_eventId[eventId].SelectMany(s => s.Seats).FirstOrDefault(s => s.SeatId == seatId);
         }
 
         public void DeleteEventSeating(string eventId)
@@ -278,7 +348,7 @@ namespace ConcertoReservoApi.Infrastructure.DataRepositories
 
         ShoppingSession IShoppingRepository.Get(string id)
         {
-            return _shoppingSessions_sessionId[id];
+            return _shoppingSessions_sessionId.GetValueOrDefault(id, null);
         }
 
         public bool Save(ShoppingSession session)

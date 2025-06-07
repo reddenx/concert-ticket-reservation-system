@@ -13,20 +13,20 @@ public class ReceiptView
     public decimal AmountCaptured { get; set; }
     public DateTime PurchaseDate { get; set; }
 
-    public string[] PrintablePurchasedSeatIds { get; set; }
+    public string[] PrintablePurchasedSeatCodes { get; set; }
 
-    public static ReceiptView FromCore(ShoppingSession session, SeatPurchaseCodeData[] seatPurchases)
+    public static ReceiptView FromCore(ShoppingSession session)
     {
         if (session.State != ShoppingStates.PurchaseComplete)
             return null;
 
         return new ReceiptView
         {
-            AmountCaptured = session.PurchaceReceipt.CaptureAmount,
-            PurchaseDate = session.PurchaceReceipt.PurchaseDate,
-            PrintablePurchasedSeatIds = seatPurchases.Select(s => s.PurchaserReference).ToArray(),
-            PublicTransactionConfirmationCode = session.PurchaceReceipt.PaymentConfirmationCode,
-            Lines = session.PurchaceReceipt.LineItems.Select(l => new PriceLineItemView()
+            AmountCaptured = session.PurchaseReceipt.CaptureAmount,
+            PurchaseDate = session.PurchaseReceipt.PurchaseDate,
+            PrintablePurchasedSeatCodes = session.PurchasedSeats.Select(s => s.PurchasedSeatReferenceCode).ToArray(),
+            PublicTransactionConfirmationCode = session.PurchaseReceipt.PaymentConfirmationCode,
+            Lines = session.PurchaseReceipt.LineItems.Select(l => new PriceLineItemView()
             {
                 Amount = l.amount,
                 Label = l.label,
