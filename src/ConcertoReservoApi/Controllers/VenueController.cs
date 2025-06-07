@@ -7,7 +7,6 @@ using System.Drawing;
 
 namespace ConcertoReservoApi.Controllers
 {
-
     //I was able to spend the least amount of time on this endpoint and supporting services
 
     [Route("venues")]

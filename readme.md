@@ -99,12 +99,17 @@ There may be room for a Seating domain but it exists currently as a bit of an aw
 - promotions and discounts, creating a domain service that feeds the avilable seating service method based on shopping context, when calculating receipt, discounts would be looked up and applied to the price as modifiers in the shopping session's BuildReceipt method, or as modifiers to the price in Selected Seats during hydration
 
 ### Things that SHOULD be here for a production ready API
-- UNIT TESTING, I just didn't get to this
+- UNIT TESTING, I just didn't get to this, and as a result it's likely full of bugs
   + Service and Core functionality should be 100% under tests
   + outbound infrastructure can be tested with integration testing in an isolated environment
   + inbound infrastructure can be tested with api tests in an isolated environment, I've used gatlingio, soapui, junit, and plain ol curl scripts before with automated deployments
+- LOGGING is for the most part absent and should be present and along side error handling and detection
 - domain object versioning, not fully implemented in a way that preserves transaction acidity on all objects
 - domain objects for all managed objects, only managed to have time for a shopping object
 - exception handling and rollback of transactions
   + anything with a cross domain mutation shuold have catch and rollback handling
 - proper configuration abstraction (I usually like it to be able to merge execution args, appsettings, and runtime configuration changes together)
+- many MANY invalid states are not checked, the patterns on the shopping object would be extended to cover that domain's cases
+
+### Assumptions being made about hosting environment
+- https terminating reverse proxy protecting the api

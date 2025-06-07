@@ -1,7 +1,6 @@
 ﻿using ConcertoReservoApi.Core;
 using ConcertoReservoApi.Infrastructure.DataRepositories;
 using ConcertoReservoApi.Infrastructure.Dtos.Shopping;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +8,7 @@ using static ConcertoReservoApi.Infrastructure.Dtos.Shopping.ShoppingSessionView
 using static ConcertoReservoApi.Services.IPaymentService;
 using static ConcertoReservoApi.Infrastructure.DataRepositories.ISeatingRepository;
 using static ConcertoReservoApi.Services.IShoppingService;
+using ConcertoReservoApi.Infrastructure;
 
 namespace ConcertoReservoApi.Services
 {
@@ -104,11 +104,15 @@ namespace ConcertoReservoApi.Services
             if (eventInfo == null)
                 return new Result<ShoppingSessionView>(null, ShoppingErrors.NotFound);
             if (eventInfo.OverrideTicketsPurchasable ?? eventInfo.TicketSalesStartDate > now)
+            {
+                _logger.Warning("shopping session attempt on unavailable event", eventId);
                 return new Result<ShoppingSessionView>(null, ShoppingErrors.NotFound);
+            }
 
             var session = _shoppingRepository.CreateShoppingSession(eventId);
             if (session == null)
             {
+                _logger.Error("failed to create shopping session for event", eventId);
                 return new Result<ShoppingSessionView>(null, ShoppingErrors.TechnicalError);
             }
 
@@ -190,6 +194,8 @@ namespace ConcertoReservoApi.Services
                 }
             }
 
+            _logger.Error("failed to reserve seats", $"sessionid:{session.Id}", $"seatIds:{string.Join(",", session.SelectedSeats.Select(s => s.SeatId))}");
+
             //this is somewhat unnecessary as the seat reservation should expire when the shopping session expires if it was left dangling, but it would ruin that seat for this and all other users as it's no longer attached to the session
             foreach (var seat in session.SelectedSeats)
             {
@@ -224,7 +230,10 @@ namespace ConcertoReservoApi.Services
 
             var valid = _paymentService.ValidatePaymentToken(paymentTokenizationId);
             if (!valid)
+            {
+                _logger.Error("given payment token did not validate with vendor", $"sessionId:{id}", $"token:{paymentTokenizationId}");
                 return new Result<ShoppingSessionView>(null, ShoppingErrors.UnacceptablyBadInput);
+            }
 
             session.AttachPaymentToken(paymentTokenizationId);
 
@@ -248,12 +257,18 @@ namespace ConcertoReservoApi.Services
             var now = _timeService.GetCurrentTime();
             var validationIssues = session.GetValidationIssues(now);
             if (validationIssues.Any())
+            {
+                _logger.Warning("attempted checkout with validation issues", $"sessionId:{id}", $"validations:{string.Join(",", validationIssues)}");
                 return new Result<ReceiptView>(null, ShoppingErrors.CannotCheckoutWithValidationIssues);
+            }
 
             var receiptLineItems = session.BuildReceipt();
             var totalPrice = receiptLineItems.Sum(r => r.amount);
             if (totalPrice != expectedTotalPrice)
+            {
+                _logger.Error("attempted checkout with a mismatching observed price", $"sessionId:{id}", $"expectedTotal:{expectedTotalPrice}", $"actualTotal:{totalPrice}");
                 return new Result<ReceiptView>(null, ShoppingErrors.ObservedPriceHasChanged);
+            }
 
             //change state to prevent reentry
             //improvements: handling if this fails or is in bad state, 
@@ -263,7 +278,7 @@ namespace ConcertoReservoApi.Services
             //calculate total price, validate against what user confirmed, capture payment, save to session
             //improvement:
             //- duplicate payment detection in payment service
-            
+
             var captureResult = _paymentService.CapturePayment(session.Id, session.PaymentReference, totalPrice);
             if (captureResult.Success)
             {
@@ -276,6 +291,7 @@ namespace ConcertoReservoApi.Services
             }
             else
             {
+                _logger.Error("payment capture failed during checkout", $"sessionId:{id}");
                 session.PaymentCaptureFailed();
                 _shoppingRepository.Save(session);
                 return new Result<ReceiptView>(null, ShoppingErrors.PaymentCaptureFailed);
