@@ -1,5 +1,16 @@
 # Concert Ticker Management System
 
+Overall summary of Process & Progress:
+- [x] Requirements turned to User Stories
+- [x] User stories organized into domains
+- [x] API outlined to fulfill user stories
+- [x] API prototype
+- [x] Core & Service prototyped to fulfill API
+- [ ] Data implemented to fulfill Core & Service requirements
+- [ ] Second pass on design and implementation including testing, logging, error handling
+- [ ] Functional & Integration testing
+
+
 # Received Requirements
 ## core feature set
 - A event management
